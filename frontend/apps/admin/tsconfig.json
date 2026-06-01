@@ -1,0 +1,10 @@
+{
+  "extends": "@marweld/config/typescript/vite.json",
+  "compilerOptions": {
+    "paths": {
+      "@marweld/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
