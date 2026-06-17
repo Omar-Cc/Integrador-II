@@ -13,7 +13,8 @@
   "dependencies": {
     "@marweld/ui": "workspace:*",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@marweld/config": "workspace:*",
