@@ -26,6 +26,9 @@ app:
       public-key: ${JWT_PUBLIC_KEY:}
       expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour
       issuer: ${JWT_ISSUER:marweld-backend}
+    mfa:
+      # Base64 de 32 bytes para cifrar secretos TOTP con AES-GCM.
+      totp-secret-encryption-key: ${MFA_TOTP_SECRET_ENCRYPTION_KEY:}
   resend:
     api-key: ${RESEND_API_KEY}
     from-email: ${RESEND_FROM_EMAIL}
@@ -37,6 +40,9 @@ app:
       secret-key: ${CF_R2_SECRET_KEY:mock-secret-key}
       public-url-prefix: ${CF_R2_PUBLIC_URL_PREFIX:}
       signed-url-ttl-seconds: ${CF_R2_SIGNED_URL_TTL_SECONDS:900}
+  chatbot:
+    llm:
+      provider: ${APP_CHATBOT_LLM_PROVIDER:MOCK}
     chatbot:
       llm:
         provider: ${APP_CHATBOT_LLM_PROVIDER:MOCK}

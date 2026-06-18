@@ -2,6 +2,7 @@ package com.integrador.marweld.notifications.infrastructure.email.adapter;
 
 import com.integrador.marweld.auth.application.port.EmailSender;
 import com.integrador.marweld.auth.domain.exception.EmailDeliveryException;
+import com.integrador.marweld.auth.domain.exception.MfaEmailDeliveryException;
 import com.integrador.marweld.notifications.application.service.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,29 @@ public class AuthEmailSenderAdapter implements EmailSender {
         } catch (Exception e) {
             log.error("Fallo del adaptador de notificaciones al despachar el correo de verificación para '{}': {}", to, e.getMessage(), e);
             throw new EmailDeliveryException("No se pudo enviar el correo de validación.", e);
+        }
+    }
+
+    @Override
+    public void sendMfaEmailOtp(String to, String name, String otp) {
+        String asunto = "Codigo de seguridad 2FA Marweld";
+        String contenidoHtml = String.format(
+                "<div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'>" +
+                "<h2>Hola, %s</h2>" +
+                "<p>Usa este codigo para confirmar tu metodo de seguridad por correo:</p>" +
+                "<div style='background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0; border-radius: 5px;'>%s</div>" +
+                "<p>Este codigo expira en 10 minutos.</p>" +
+                "<p>Si no solicitaste esta configuracion, cambia tu contrasena y contacta a soporte.</p>" +
+                "</div>",
+                name, otp
+        );
+
+        try {
+            log.info("Enviando correo OTP 2FA mediante adaptador de notificaciones a: {}", to);
+            emailService.sendEmail(to, asunto, contenidoHtml);
+        } catch (Exception e) {
+            log.error("Fallo al despachar correo OTP 2FA para '{}': {}", to, e.getMessage(), e);
+            throw new MfaEmailDeliveryException("No se pudo enviar el codigo 2FA por correo.", e);
         }
     }
 }

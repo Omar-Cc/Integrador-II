@@ -7,6 +7,7 @@ import com.integrador.marweld.notifications.application.service.EmailService;
 import com.integrador.marweld.core.security.CloudflareIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/demo")
+@Profile("dev")
 public class DemoController {
 
     private final AsymmetricJwtService jwtService;

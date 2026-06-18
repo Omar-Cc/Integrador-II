@@ -14,6 +14,14 @@ CREATE INDEX idx_rol_permiso_id_permiso ON rol_permiso (id_permiso);
 -- Búsqueda de usuarios por rol
 CREATE INDEX idx_usuarios_id_rol ON usuarios (id_rol);
 
+-- Recuperacion de metodos MFA activos o pendientes por usuario
+CREATE INDEX idx_usuarios_mfa_metodos_usuario_estado
+    ON usuarios_mfa_metodos (id_usuario, estado);
+
+-- Validacion de codigos MFA por email pendientes y vigentes
+CREATE INDEX idx_codigos_mfa_email_usuario_estado_expiracion
+    ON codigos_mfa_email (id_usuario, estado, fecha_expiracion);
+
 -- Recuperación de sesiones activas de un usuario específico
 CREATE INDEX idx_sesiones_usuario_id_usuario ON sesiones_usuario (id_usuario);
 CREATE INDEX idx_sesiones_usuario_estado ON sesiones_usuario (estado);
