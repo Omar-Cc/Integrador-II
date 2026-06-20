@@ -15,5 +15,6 @@ public record LlmPrompt(
     List<FaqChatbot> matchedFaqs,
     List<Producto> matchedProducts,
     String cartSummary,
-    List<MensajeChatbot> conversationHistory
+    List<MensajeChatbot> conversationHistory,
+    Integer idCarrito
 ) {}

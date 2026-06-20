@@ -2,11 +2,13 @@ package com.integrador.marweld.catalog.api.controller;
 
 import com.integrador.marweld.catalog.api.mapper.CatalogApiMapper;
 import com.integrador.marweld.catalog.api.request.CreateProductRequest;
+import com.integrador.marweld.catalog.api.request.FiltrosProducto;
 import com.integrador.marweld.catalog.api.response.ProductResponse;
 import com.integrador.marweld.catalog.application.command.CreateProductCommand;
 import com.integrador.marweld.catalog.application.result.CreateProductResult;
 import com.integrador.marweld.catalog.application.service.CatalogService;
 import com.integrador.marweld.catalog.domain.model.Producto;
+import com.integrador.marweld.catalog.infrastructure.persistence.projection.ProductSummaryProjection;
 import com.integrador.marweld.core.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Controlador REST para gestionar operaciones asociadas con productos.
@@ -55,25 +56,20 @@ public class ProductController {
      * Obtiene el detalle de un producto por su UUID.
      */
     @GetMapping("/{publicId}")
-    public ResponseEntity<ApiResponse<ProductResponse>> getProductByPublicId(@PathVariable UUID publicId) {
-        Producto producto = catalogService.getProductByPublicId(publicId);
-        Integer stock = catalogService.getStockActual(producto.getIdProducto());
-        ProductResponse responseData = catalogApiMapper.toResponse(producto, stock);
+    public ResponseEntity<ApiResponse<ProductSummaryProjection>> getProductByPublicId(@PathVariable UUID publicId) {
+        ProductSummaryProjection responseData = catalogService.getProductProjectionByPublicId(publicId);
+        if (responseData == null) {
+            throw new com.integrador.marweld.catalog.domain.exception.ProductNotFoundException(publicId);
+        }
         return ResponseEntity.ok(ApiResponse.success("Producto recuperado exitosamente.", responseData));
     }
 
     /**
-     * Obtiene la lista de todos los productos activos.
+     * Obtiene la lista de todos los productos activos con soporte para filtros de búsqueda.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getAllProducts() {
-        List<Producto> productos = catalogService.getAllActiveProducts();
-        List<ProductResponse> responseData = productos.stream()
-                .map(p -> {
-                    Integer stock = catalogService.getStockActual(p.getIdProducto());
-                    return catalogApiMapper.toResponse(p, stock);
-                })
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<ProductSummaryProjection>>> getAllProducts(FiltrosProducto filtros) {
+        List<ProductSummaryProjection> responseData = catalogService.searchCatalog(filtros);
         return ResponseEntity.ok(ApiResponse.success("Listado de productos recuperado exitosamente.", responseData));
     }
 }

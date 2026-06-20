@@ -2,6 +2,7 @@ package com.integrador.marweld.chatbot.infrastructure.persistence.repository;
 
 import com.integrador.marweld.chatbot.domain.model.DocumentoConocimiento;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -30,4 +31,14 @@ public interface DocumentoConocimientoRepository extends JpaRepository<Documento
      * @return Lista de documentos.
      */
     List<DocumentoConocimiento> findByEstadoAndCategoria(String estado, String categoria);
+
+    /**
+     * Realiza una búsqueda semántica de vecinos más cercanos usando distancia de coseno.
+     *
+     * @param embeddingVectorString Representación del vector como string (ej. "[0.123, -0.456, ...]").
+     * @param limit Cantidad máxima de registros a retornar.
+     * @return Lista de documentos ordenados por relevancia semántica.
+     */
+    @Query(value = "SELECT * FROM documentos_conocimiento d WHERE d.estado = 'ACTIVO' ORDER BY d.embedding <=> cast(?1 as vector) LIMIT ?2", nativeQuery = true)
+    List<DocumentoConocimiento> findNearestDocuments(String embeddingVectorString, int limit);
 }

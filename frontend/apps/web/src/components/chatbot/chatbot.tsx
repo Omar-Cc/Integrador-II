@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
 import { useCarritoStore } from "../../features/carrito/stores/carrito.store";
-import { productosMock } from "../../features/home/data/productos.mock";
 import type { Producto } from "../../features/home/types/producto.types";
+import { useAuthStore } from "../../shared/stores/auth.store";
+import { apiRequest } from "../../shared/api/client";
 
 type Message = {
   id: string;
@@ -39,10 +40,12 @@ function normalizeText(text: string): string {
 export function Chatbot() {
   const router = useRouter();
   const agregarAlCarrito = useCarritoStore((s) => s.agregar);
+  const user = useAuthStore((s) => s.user);
 
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -64,6 +67,10 @@ export function Chatbot() {
       const savedOpen = sessionStorage.getItem("marweld_chat_open");
       if (savedOpen) {
         setIsOpen(JSON.parse(savedOpen));
+      }
+      const savedSessionId = sessionStorage.getItem("marweld_chat_session_id");
+      if (savedSessionId) {
+        setSessionId(savedSessionId);
       }
     } catch (e) {
       console.error("Error loading chat state from sessionStorage", e);
@@ -87,10 +94,73 @@ export function Chatbot() {
     }
   }, [isOpen]);
 
+  // Initialize session when chatbot is opened
+  useEffect(() => {
+    if (isOpen && !sessionId) {
+      initializeChatSession();
+    }
+  }, [isOpen, sessionId]);
+
   // Scroll to bottom when messages or typing status changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
+
+  const initializeChatSession = async () => {
+    try {
+      const visitorToken = sessionStorage.getItem("marweld_visitor_token") || 
+        `visitor-${Math.random().toString(36).substring(2, 10)}`;
+      sessionStorage.setItem("marweld_visitor_token", visitorToken);
+
+      const response = await apiRequest<{ sessionPublicId: string }>(
+        "/api/v1/chatbot/sessions",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            tipoActor: user ? "CLIENTE" : "VISITANTE",
+            clientPublicId: user?.clientPublicId || null,
+            tokenVisitante: user ? null : visitorToken
+          })
+        }
+      );
+
+      if (response && response.sessionPublicId) {
+        setSessionId(response.sessionPublicId);
+        sessionStorage.setItem("marweld_chat_session_id", response.sessionPublicId);
+      }
+    } catch (error) {
+      console.error("Failed to initialize chatbot session", error);
+    }
+  };
+
+  const fetchProductsFromBackend = async (query: string): Promise<Producto[]> => {
+    try {
+      const res = await fetch(`/api/v1/products?busqueda=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.data) {
+          return data.data.map((prod: any) => ({
+            id: prod.publicId,
+            nombre: prod.nombre,
+            descripcionCorta: prod.descripcionCorta || prod.descripcion || "",
+            descripcionLarga: prod.descripcionLarga || "",
+            precio: prod.precio,
+            imagen: prod.imagen || "/placeholder-product.png",
+            categoria: prod.categoria || "Soldadura",
+            marca: prod.marca || "Genérica",
+            disponible: prod.disponible ?? true,
+            stock: prod.stock ?? 10,
+            destacado: prod.destacado ?? false,
+            caracteristicas: prod.caracteristicas || [],
+            relacionados: prod.relacionados || [],
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching products from backend", err);
+    }
+    return [];
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,110 +179,184 @@ export function Chatbot() {
     submitMessage(chip, searchTerm);
   };
 
-  const submitMessage = (userDisplayText: string, searchKey: string) => {
-    // Add user message
+  const submitMessage = async (userDisplayText: string, searchKey: string) => {
+    // Add user message to state
     const userMsgId = `user-${Date.now()}`;
-    const newMessages = [
-      ...messages,
+    setMessages((prev) => [
+      ...prev,
       { id: userMsgId, sender: "user" as const, text: userDisplayText },
-    ];
-    setMessages(newMessages);
+    ]);
     setIsTyping(true);
 
-    // Simulate bot thinking delay
-    setTimeout(() => {
-      setIsTyping(false);
-      const searchResult = performSearch(searchKey);
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      try {
+        const visitorToken = sessionStorage.getItem("marweld_visitor_token") || 
+          `visitor-${Math.random().toString(36).substring(2, 10)}`;
+        sessionStorage.setItem("marweld_visitor_token", visitorToken);
 
+        const response = await apiRequest<{ sessionPublicId: string }>(
+          "/api/v1/chatbot/sessions",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              tipoActor: user ? "CLIENTE" : "VISITANTE",
+              clientPublicId: user?.clientPublicId || null,
+              tokenVisitante: user ? null : visitorToken
+            })
+          }
+        );
+        if (response && response.sessionPublicId) {
+          activeSessionId = response.sessionPublicId;
+          setSessionId(activeSessionId);
+          sessionStorage.setItem("marweld_chat_session_id", activeSessionId);
+        }
+      } catch (err) {
+        console.error("Error initializing session before message", err);
+      }
+    }
+
+    if (!activeSessionId) {
+      setIsTyping(false);
       setMessages((prev) => [
         ...prev,
         {
-          id: `bot-${Date.now()}`,
+          id: `bot-err-${Date.now()}`,
           sender: "bot",
-          text: searchResult.text,
-          products: searchResult.products,
+          text: "Lo siento, no pude conectar con el asistente de chat en este momento.",
         },
       ]);
-    }, 600);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/chatbot/sessions/${activeSessionId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: userDisplayText }),
+      });
+
+      if (!response.ok) {
+        throw new Error("HTTP error " + response.status);
+      }
+
+      const body = await response.json();
+      const data = body.data; // MessageProcessResult
+
+      const botMsgId = `bot-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        { id: botMsgId, sender: "bot", text: data.botMessageContent || "", products: [] },
+      ]);
+      setIsTyping(false);
+
+      let hasAction = false;
+      const isCartAction = data.intent === "MODIFICAR_CARRITO" && data.toolCallName;
+
+      if (isCartAction) {
+        const toolCallName = data.toolCallName.toLowerCase();
+        let args: any = {};
+        try {
+          args = typeof data.toolCallArgsJson === "string" ? JSON.parse(data.toolCallArgsJson) : data.toolCallArgsJson;
+        } catch (e) {
+          console.error("Error parsing toolCallArgsJson", e);
+        }
+
+        if (toolCallName === "add_to_cart" && args.productPublicId) {
+          hasAction = true;
+          try {
+            const prodRes = await fetch(`/api/v1/products/${args.productPublicId}`);
+            if (prodRes.ok) {
+              const prodData = await prodRes.json();
+              if (prodData && prodData.data) {
+                const prod = prodData.data;
+                agregarAlCarrito({
+                  id: prod.publicId,
+                  nombre: prod.nombre,
+                  imagen: prod.imagen || "/placeholder-product.png",
+                  precio: prod.precio,
+                  stock: prod.stock || 10,
+                }, args.cantidad || 1);
+
+                // Attach the matched product card to the bot message
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === botMsgId
+                      ? {
+                          ...msg,
+                          products: [...(msg.products || []).filter(p => p.id !== prod.publicId), {
+                            id: prod.publicId,
+                            nombre: prod.nombre,
+                            descripcionCorta: prod.descripcionCorta || prod.descripcion || "",
+                            descripcionLarga: prod.descripcionLarga || "",
+                            precio: prod.precio,
+                            imagen: prod.imagen || "/placeholder-product.png",
+                            categoria: prod.categoria || "Soldadura",
+                            marca: prod.marca || "Genérica",
+                            disponible: prod.disponible ?? true,
+                            stock: prod.stock ?? 10,
+                            destacado: prod.destacado ?? false,
+                            caracteristicas: prod.caracteristicas || [],
+                            relacionados: prod.relacionados || [],
+                          }],
+                          showOptionsAfterAdd: true
+                        }
+                      : msg
+                  )
+                );
+              }
+            }
+          } catch (err) {
+            console.error("Error updating cart from response action", err);
+          }
+        } else if (toolCallName === "remove_from_cart" && args.productPublicId) {
+          const removeFn = useCarritoStore.getState().eliminar;
+          removeFn(args.productPublicId);
+        }
+      }
+
+      // If no action was made, but the user is querying products, fetch relevant search cards
+      if (!hasAction) {
+        const extractedKeywords = userDisplayText
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, " ")
+          .split(/\s+/)
+          .filter(kw => kw.length >= 3 && !["de", "la", "el", "un", "con", "en", "para", "por", "que", "los", "las", "hola", "busco", "quiero", "necesito", "tienen", "venden", "precio", "cuanto", "cuesta"].includes(kw));
+
+        const firstKeyword = extractedKeywords[0];
+        if (firstKeyword) {
+          const matched = await fetchProductsFromBackend(firstKeyword);
+          if (matched.length > 0) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === botMsgId
+                  ? { ...msg, products: matched }
+                  : msg
+              )
+            );
+          }
+        }
+      }
+
+    } catch (err) {
+      console.error("Error in sending message", err);
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `bot-err-${Date.now()}`,
+          sender: "bot",
+          text: "Lo siento, ocurrió un problema al procesar tu consulta.",
+        },
+      ]);
+    }
   };
 
-  const performSearch = (
-    query: string,
-  ): { text: string; products: Producto[] } => {
-    const cleanQuery = normalizeText(query);
-
-    if (
-      cleanQuery.includes("envio") ||
-      cleanQuery.includes("recojo") ||
-      cleanQuery.includes("delivery") ||
-      cleanQuery.includes("tienda")
-    ) {
-      return {
-        text: "En Marweld Perú ofrecemos dos modalidades de entrega:\n\n• **Recojo en Tienda (Gratis)**: Recoge tu pedido sin costo adicional en nuestra sede de Ate (Av. Industrial 123).\n\n• **Delivery a Domicilio**: Costo de envío general de S/ 15.00 a cualquier parte de Lima. ¡Y el envío es totalmente **GRATIS** en compras mayores a S/ 500.00!",
-        products: [],
-      };
-    }
-
-    if (
-      cleanQuery === "ofertas" ||
-      cleanQuery.includes("oferta") ||
-      cleanQuery.includes("descuento")
-    ) {
-      const matching = productosMock.filter(
-        (p) => p.precioAnterior !== undefined && p.precioAnterior > p.precio,
-      );
-      return {
-        text:
-          matching.length > 0
-            ? "¡Aquí tienes nuestras mejores ofertas con descuentos especiales!"
-            : "Por el momento no tenemos ofertas activas, pero nuestros precios son los mejores del mercado.",
-        products: matching,
-      };
-    }
-
-    if (
-      cleanQuery === "productos disponibles" ||
-      cleanQuery.includes("disponible") ||
-      cleanQuery.includes("stock")
-    ) {
-      const matching = productosMock.filter((p) => p.disponible && p.stock > 0);
-      return {
-        text: "Tenemos una gran variedad de productos en stock listos para entrega inmediata. Aquí algunos de ellos:",
-        products: matching,
-      };
-    }
-
-    // Split search keywords
-    const keywords = cleanQuery.split(/\s+/).filter(Boolean);
-    if (keywords.length === 0) {
-      return {
-        text: "Por favor, escribe una palabra o término de búsqueda.",
-        products: [],
-      };
-    }
-
-    // Filter products
-    const matching = productosMock.filter((p) => {
-      const textToSearch = normalizeText(
-        `${p.nombre} ${p.categoria} ${p.marca} ${p.descripcionCorta} ${p.descripcionLarga}`,
-      );
-      return keywords.every((kw) => textToSearch.includes(kw));
-    });
-
-    if (matching.length > 0) {
-      return {
-        text: `Encontré ${matching.length} producto${matching.length === 1 ? "" : "s"} relacionado${matching.length === 1 ? "" : "s"}:`,
-        products: matching,
-      };
-    } else {
-      return {
-        text: "No encontré productos relacionados, intenta con otra palabra o revisa el catálogo.",
-        products: [],
-      };
-    }
-  };
-
-  const handleAddToCart = (producto: Producto) => {
+  const handleAddToCart = async (producto: Producto) => {
     if (!producto.disponible || producto.stock <= 0) return;
 
     // Add to Zustand Store
@@ -226,6 +370,23 @@ export function Chatbot() {
       },
       1,
     );
+
+    // Synchronize to the backend session cart
+    const activeSessionId = sessionId;
+    if (activeSessionId) {
+      try {
+        await fetch(`/api/v1/chatbot/sessions/${activeSessionId}/cart/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productPublicId: producto.id,
+            cantidad: 1
+          })
+        });
+      } catch (err) {
+        console.error("Failed to sync manual cart addition to backend", err);
+      }
+    }
 
     // Bot message indicating it was added and offering options
     setIsTyping(true);

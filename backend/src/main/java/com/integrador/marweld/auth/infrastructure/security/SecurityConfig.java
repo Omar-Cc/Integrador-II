@@ -40,6 +40,8 @@ public class SecurityConfig {
                                 "/api/auth/login/mfa/verify",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
+                                "/api/v1/products/**",
+                                "/api/v1/chatbot/**",
                                 "/error",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

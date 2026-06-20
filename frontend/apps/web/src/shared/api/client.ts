@@ -15,7 +15,9 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(path, {
+  const isServer = typeof window === "undefined";
+  const baseUrl = isServer ? (process.env.BACKEND_INTERNAL_URL || "http://localhost:8080") : "";
+  const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     credentials: "include",
     headers: {

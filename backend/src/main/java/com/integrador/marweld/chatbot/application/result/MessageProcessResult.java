@@ -16,5 +16,22 @@ public record MessageProcessResult(
     String botMessageContent,
     LocalDateTime botMessageDate,
     String intent,
-    BigDecimal confidence
-) {}
+    BigDecimal confidence,
+    String toolCallName,
+    String toolCallArgsJson
+) {
+    public MessageProcessResult(
+        UUID sessionPublicId,
+        UUID userMessagePublicId,
+        String userMessageContent,
+        LocalDateTime userMessageDate,
+        UUID botMessagePublicId,
+        String botMessageContent,
+        LocalDateTime botMessageDate,
+        String intent,
+        BigDecimal confidence
+    ) {
+        this(sessionPublicId, userMessagePublicId, userMessageContent, userMessageDate,
+             botMessagePublicId, botMessageContent, botMessageDate, intent, confidence, null, null);
+    }
+}

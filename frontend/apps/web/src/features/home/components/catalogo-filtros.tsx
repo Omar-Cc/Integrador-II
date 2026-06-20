@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@marweld/ui/lib/utils";
 import { ProductoCard } from "./producto-card";
+import { getProductos } from "../services/productos.service";
 import type { Producto, Categoria, Marca } from "../types/producto.types";
 
 const CATEGORIAS: Categoria[] = [
@@ -17,7 +18,9 @@ type CatalogoFiltrosProps = {
   productos: Producto[];
 };
 
-export function CatalogoFiltros({ productos }: CatalogoFiltrosProps) {
+export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltrosProps) {
+  const [productos, setProductos] = useState<Producto[]>(initialProductos);
+  const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [categoria, setCategoria] = useState<Categoria | "">("");
   const [marca, setMarca] = useState<Marca | "">("");
@@ -25,26 +28,36 @@ export function CatalogoFiltros({ productos }: CatalogoFiltrosProps) {
   const [precioMax, setPrecioMax] = useState(2500);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
-  const filtrados = useMemo(() => {
-    return productos.filter((p) => {
-      const q = busqueda.toLowerCase();
-      const matchBusqueda =
-        !q ||
-        p.nombre.toLowerCase().includes(q) ||
-        p.descripcionCorta.toLowerCase().includes(q);
-      const matchCategoria = !categoria || p.categoria === categoria;
-      const matchMarca = !marca || p.marca === marca;
-      const matchPrecio = p.precio <= precioMax;
-      const matchDisponible = !soloDisponibles || p.disponible;
-      return (
-        matchBusqueda &&
-        matchCategoria &&
-        matchMarca &&
-        matchPrecio &&
-        matchDisponible
-      );
-    });
-  }, [productos, busqueda, categoria, marca, precioMax, soloDisponibles]);
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      getProductos({
+        categoria: categoria || undefined,
+        marca: marca || undefined,
+        precioMax,
+        soloDisponibles,
+        busqueda: busqueda || undefined,
+      })
+        .then((res) => {
+          if (active) {
+            setProductos(res);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          if (active) setLoading(false);
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [categoria, marca, precioMax, soloDisponibles, busqueda]);
+
+  const filtrados = productos;
 
   const limpiarFiltros = () => {
     setCategoria("");
@@ -311,7 +324,10 @@ export function CatalogoFiltros({ productos }: CatalogoFiltrosProps) {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className={cn(
+              "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 transition-opacity duration-200",
+              loading && "opacity-50 pointer-events-none"
+            )}>
               {filtrados.map((p) => (
                 <ProductoCard key={p.id} producto={p} />
               ))}

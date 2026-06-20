@@ -4,6 +4,7 @@ import com.integrador.marweld.catalog.domain.model.Producto;
 import com.integrador.marweld.chatbot.application.port.LlmClientPort;
 import com.integrador.marweld.chatbot.application.port.LlmPrompt;
 import com.integrador.marweld.chatbot.application.port.LlmResponse;
+import com.integrador.marweld.chatbot.application.port.LlmStreamingChunk;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -60,5 +61,31 @@ public class MockLlmAdapter implements LlmClientPort {
                 120, // tokens output mock
                 "mock-llama-3"
         );
+    }
+
+    @Override
+    public void generateResponseStream(LlmPrompt prompt, java.util.function.Consumer<LlmStreamingChunk> chunkConsumer) {
+        LlmResponse fullResponse = generateResponse(prompt);
+        String text = fullResponse.textResponse();
+        String[] words = text.split(" ");
+        
+        // Simular streaming enviando palabra por palabra con 50ms de retardo
+        for (int i = 0; i < words.length; i++) {
+            String chunkText = words[i] + (i < words.length - 1 ? " " : "");
+            boolean isLast = (i == words.length - 1);
+            chunkConsumer.accept(new LlmStreamingChunk(
+                    chunkText,
+                    isLast,
+                    fullResponse.intent(),
+                    null, // No mock tool calls
+                    null
+            ));
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
     }
 }

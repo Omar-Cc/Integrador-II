@@ -4,6 +4,7 @@ import com.integrador.marweld.catalog.domain.model.Producto;
 import com.integrador.marweld.chatbot.application.port.LlmClientPort;
 import com.integrador.marweld.chatbot.application.port.LlmPrompt;
 import com.integrador.marweld.chatbot.application.port.LlmResponse;
+import com.integrador.marweld.chatbot.application.port.LlmStreamingChunk;
 import com.integrador.marweld.chatbot.infrastructure.config.ChatbotProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,5 +169,10 @@ public class OpenAiLlmAdapter implements LlmClientPort {
             return "FAQ";
         }
         return "GENERAL";
+    }
+
+    @Override
+    public void generateResponseStream(LlmPrompt prompt, java.util.function.Consumer<LlmStreamingChunk> chunkConsumer) {
+        throw new UnsupportedOperationException("El streaming para OpenAI no está implementado en este adaptador.");
     }
 }

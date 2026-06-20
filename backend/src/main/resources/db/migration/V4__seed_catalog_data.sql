@@ -165,6 +165,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 1
 (1, 'imagen', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80'),
 (1, 'descripcion_corta', 'Electrodo revestido de uso general para soldadura SMAW sobre aceros al carbono en todas las posiciones.'),
+(1, 'marca', 'Lincoln'),
+(1, 'destacado', 'true'),
+(1, 'precio_anterior', '54.0'),
 (1, 'Clasificación AWS', 'E6013'),
 (1, 'Diámetro', '3/32" (2.4 mm)'),
 (1, 'Corriente', 'AC / DC+'),
@@ -177,6 +180,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 2
 (2, 'imagen', 'https://images.unsplash.com/photo-1617040617769-1b66bf6a57da?w=600&auto=format&fit=crop&q=80'),
 (2, 'descripcion_corta', 'Soldadora inversora MIG/MAG de 250 A con control digital, ciclo 60 % y pistola 3 m incluida.'),
+(2, 'marca', 'Miller'),
+(2, 'destacado', 'true'),
 (2, 'Proceso', 'MIG / MAG (GMAW)'),
 (2, 'Corriente máx.', '250 A'),
 (2, 'Rango de corriente', '30 – 250 A'),
@@ -189,6 +194,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 3
 (3, 'imagen', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&auto=format&fit=crop&q=80'),
 (3, 'descripcion_corta', 'Alambre sólido cobreado para GMAW, alta resistencia mecánica y bajo nivel de salpicaduras.'),
+(3, 'marca', 'ESAB'),
+(3, 'destacado', 'false'),
+(3, 'precio_anterior', '210.0'),
 (3, 'Clasificación AWS', 'ER70S-6 / A5.18'),
 (3, 'Diámetro', '0.9 mm'),
 (3, 'Peso bobina', '15 kg (D200)'),
@@ -201,6 +209,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 4
 (4, 'imagen', 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=600&auto=format&fit=crop&q=80'),
 (4, 'descripcion_corta', 'Soldadora TIG con encendido de alta frecuencia para soldadura de inox, aluminio y acero.'),
+(4, 'marca', 'Miller'),
+(4, 'destacado', 'true'),
+(4, 'precio_anterior', '2700.0'),
 (4, 'Procesos', 'TIG (GTAW) / Stick (SMAW)'),
 (4, 'Corriente máx.', '200 A (TIG) / 180 A (Stick)'),
 (4, 'Encendido TIG', 'Alta frecuencia (HF)'),
@@ -213,6 +224,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 5
 (5, 'imagen', 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=600&auto=format&fit=crop&q=80'),
 (5, 'descripcion_corta', 'Amoladora profesional de alto par para corte y desbaste pesado en metal, piedra y hormigón.'),
+(5, 'marca', 'Bosch'),
+(5, 'destacado', 'true'),
+(5, 'precio_anterior', '395.0'),
 (5, 'Potencia', '2,200 W'),
 (5, 'Diámetro disco', '7" (180 mm)'),
 (5, 'Vel. sin carga', '8,500 RPM'),
@@ -225,6 +239,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 6
 (6, 'imagen', 'https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=600&auto=format&fit=crop&q=80'),
 (6, 'descripcion_corta', 'Taladro percutor de 850 W con portabrocas de 13 mm, velocidad variable y reversa electrónica.'),
+(6, 'marca', 'DeWalt'),
+(6, 'destacado', 'false'),
+(6, 'precio_anterior', '290.0'),
 (6, 'Potencia', '850 W'),
 (6, 'Portabrocas', '13 mm con llave'),
 (6, 'Vel. sin carga', '0 – 3,000 RPM'),
@@ -237,6 +254,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 7
 (7, 'imagen', 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80'),
 (7, 'descripcion_corta', 'Sierra circular profesional con base de aluminio, profundidad de corte 67 mm y guía paralela.'),
+(7, 'marca', 'DeWalt'),
+(7, 'destacado', 'false'),
 (7, 'Potencia', '1,800 W'),
 (7, 'Diámetro hoja', '7-1/4" (184 mm)'),
 (7, 'Prof. corte 90°', '67 mm'),
@@ -249,6 +268,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 8
 (8, 'imagen', 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&auto=format&fit=crop&q=80'),
 (8, 'descripcion_corta', 'Esmeril de banco con dos muelas abrasivas Ø 150 mm para afilado y desbaste de herramientas.'),
+(8, 'marca', 'Bosch'),
+(8, 'destacado', 'false'),
+(8, 'precio_anterior', '250.0'),
 (8, 'Potencia', '375 W'),
 (8, 'Diámetro muela', '150 mm (6")'),
 (8, 'Grano muelas', 'G36 / G60'),
@@ -261,6 +283,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 9
 (9, 'imagen', 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=600&auto=format&fit=crop&q=80'),
 (9, 'descripcion_corta', 'Careta de oscurecimiento automático con zona de visión 98×68 mm y reacción ultrarrápida 1/25,000 s.'),
+(9, 'marca', '3M'),
+(9, 'destacado', 'true'),
+(9, 'precio_anterior', '235.0'),
 (9, 'Tipo lente', 'LCD fotosensible'),
 (9, 'Zona de visión', '98 × 68 mm'),
 (9, 'Oscurecimiento', 'DIN 9 – 13 (ajustable)'),
@@ -273,6 +298,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 10
 (10, 'imagen', 'https://images.unsplash.com/photo-1603899122634-f086ca5f5ddd?w=600&auto=format&fit=crop&q=80'),
 (10, 'descripcion_corta', 'Guantes de cuero de cerdo grano fino para TIG con manga larga de 35 cm y alta sensibilidad táctil.'),
+(10, 'marca', '3M'),
+(10, 'destacado', 'false'),
 (10, 'Material palma', 'Cuero de cerdo grano fino'),
 (10, 'Material manga', 'Cuero dividido'),
 (10, 'Longitud manga', '35 cm'),
@@ -285,6 +312,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 11
 (11, 'imagen', 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=600&auto=format&fit=crop&q=80'),
 (11, 'descripcion_corta', 'Mangas de cuero genuino para protección de brazos contra salpicaduras y calor radiante.'),
+(11, 'marca', '3M'),
+(11, 'destacado', 'false'),
 (11, 'Material', 'Cuero vacuno 1.2 mm'),
 (11, 'Largo', '40 cm'),
 (11, 'Cierre', 'Broche metálico ajustable'),
@@ -297,6 +326,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 12
 (12, 'imagen', 'https://images.unsplash.com/photo-1587614382346-4ec70e388b28?w=600&auto=format&fit=crop&q=80'),
 (12, 'descripcion_corta', 'Careta de seguridad facial en policarbonato transparente para amolado, esmerilado y química.'),
+(12, 'marca', '3M'),
+(12, 'destacado', 'false'),
 (12, 'Visor', 'Policarbonato 1.5 mm'),
 (12, 'Tratamiento', 'Antirayaduras'),
 (12, 'Dimensión visor', '200 × 390 mm'),
@@ -309,6 +340,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 13
 (13, 'imagen', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80'),
 (13, 'descripcion_corta', 'Discos abrasivos ultrafinos para amoladora angular, corte limpio en acero y acero inoxidable.'),
+(13, 'marca', 'ESAB'),
+(13, 'destacado', 'false'),
+(13, 'precio_anterior', '48.0'),
 (13, 'Diámetro', '4-1/2" (115 mm)'),
 (13, 'Espesor', '1.0 mm'),
 (13, 'Agujero', '22.2 mm'),
@@ -321,6 +355,8 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 14
 (14, 'imagen', 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&auto=format&fit=crop&q=80'),
 (14, 'descripcion_corta', 'Disco abrasivo de desbaste grueso para remoción rápida de material en acero estructural.'),
+(14, 'marca', 'ESAB'),
+(14, 'destacado', 'false'),
 (14, 'Diámetro', '7" (180 mm)'),
 (14, 'Espesor', '6 mm'),
 (14, 'Agujero', '22.2 mm'),
@@ -333,6 +369,9 @@ INSERT INTO especificaciones_producto (id_producto, clave, valor) VALUES
 -- Producto 15
 (15, 'imagen', 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&auto=format&fit=crop&q=80'),
 (15, 'descripcion_corta', 'Disco flap (abanico) de zirconio para desbaste y acabado simultáneo en acero inoxidable y metales duros.'),
+(15, 'marca', 'ESAB'),
+(15, 'destacado', 'false'),
+(15, 'precio_anterior', '68.0'),
 (15, 'Diámetro', '4-1/2" (115 mm)'),
 (15, 'Tipo abrasivo', 'Zirconio-Aluminio'),
 (15, 'Grano', '40'),

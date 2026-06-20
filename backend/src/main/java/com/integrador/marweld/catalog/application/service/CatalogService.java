@@ -2,8 +2,10 @@ package com.integrador.marweld.catalog.application.service;
 
 import com.integrador.marweld.catalog.application.command.CreateProductCommand;
 import com.integrador.marweld.catalog.application.result.CreateProductResult;
+import com.integrador.marweld.catalog.api.request.FiltrosProducto;
 import com.integrador.marweld.catalog.domain.model.Categoria;
 import com.integrador.marweld.catalog.domain.model.Producto;
+import com.integrador.marweld.catalog.infrastructure.persistence.projection.ProductSummaryProjection;
 
 import java.util.List;
 import java.util.UUID;
@@ -12,6 +14,14 @@ import java.util.UUID;
  * Interfaz de servicio de fachada para el módulo de catálogo.
  */
 public interface CatalogService {
+
+    /**
+     * Busca y filtra los productos de catálogo para mostrar en el e-commerce.
+     *
+     * @param filtros Filtros dinámicos de búsqueda.
+     * @return Lista de proyecciones de catálogo de productos.
+     */
+    List<ProductSummaryProjection> searchCatalog(FiltrosProducto filtros);
 
     /**
      * Registra un nuevo producto delegando en el caso de uso correspondiente.
@@ -28,6 +38,14 @@ public interface CatalogService {
      * @return Producto encontrado.
      */
     Producto getProductByPublicId(UUID publicId);
+
+    /**
+     * Obtiene la proyección enriquecida de catálogo para un producto por su UUID público.
+     *
+     * @param publicId Identificador UUID público.
+     * @return Proyección de catálogo o null si no se encuentra.
+     */
+    ProductSummaryProjection getProductProjectionByPublicId(UUID publicId);
 
     /**
      * Obtiene todos los productos con estado ACTIVO.

@@ -6,6 +6,8 @@ import {
   getPreguntasFrecuentes,
 } from "../../../../src/features/home/services/productos.service";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -13,11 +15,13 @@ type Props = {
 export default async function ProductoRoute({ params }: Props) {
   const { id } = await params;
 
-  const producto = getProductoById(id);
+  const producto = await getProductoById(id);
   if (!producto) notFound();
 
-  const relacionados = getProductosRelacionados(producto.relacionados);
-  const preguntas = getPreguntasFrecuentes();
+  const [relacionados, preguntas] = await Promise.all([
+    getProductosRelacionados(producto.relacionados),
+    getPreguntasFrecuentes(),
+  ]);
 
   return (
     <ProductoDetallePage

@@ -11,5 +11,18 @@ public record LlmResponse(
     BigDecimal confidence,
     Integer tokensInput,
     Integer tokensOutput,
-    String modelUsed
-) {}
+    String modelUsed,
+    String toolCallName,
+    String toolCallArgsJson
+) {
+    public LlmResponse(
+        String textResponse,
+        String intent,
+        BigDecimal confidence,
+        Integer tokensInput,
+        Integer tokensOutput,
+        String modelUsed
+    ) {
+        this(textResponse, intent, confidence, tokensInput, tokensOutput, modelUsed, null, null);
+    }
+}

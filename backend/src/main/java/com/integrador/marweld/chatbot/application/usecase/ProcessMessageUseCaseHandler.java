@@ -22,6 +22,7 @@ import com.integrador.marweld.chatbot.infrastructure.persistence.repository.Mens
 import com.integrador.marweld.chatbot.infrastructure.persistence.repository.ProductosMensajeChatbotRepository;
 import com.integrador.marweld.chatbot.infrastructure.persistence.repository.SesionChatbotRepository;
 import com.integrador.marweld.chatbot.infrastructure.persistence.repository.TelemetriaMensajeChatbotRepository;
+import com.integrador.marweld.chatbot.infrastructure.adapter.EmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,6 +51,7 @@ public class ProcessMessageUseCaseHandler implements ProcessMessageUseCase {
     private final FaqChatbotRepository faqChatbotRepository;
     private final ProductoRepository productoRepository;
     private final CartPort cartPort;
+    private final EmbeddingService embeddingService;
     private final Map<String, LlmClientPort> llmClients;
     private final String activeProvider;
 
@@ -61,6 +63,7 @@ public class ProcessMessageUseCaseHandler implements ProcessMessageUseCase {
             FaqChatbotRepository faqChatbotRepository,
             ProductoRepository productoRepository,
             CartPort cartPort,
+            EmbeddingService embeddingService,
             List<LlmClientPort> llmClientList,
             @Value("${app.chatbot.llm.provider}") String activeProvider) {
         
@@ -71,6 +74,7 @@ public class ProcessMessageUseCaseHandler implements ProcessMessageUseCase {
         this.faqChatbotRepository = faqChatbotRepository;
         this.productoRepository = productoRepository;
         this.cartPort = cartPort;
+        this.embeddingService = embeddingService;
         this.llmClients = llmClientList.stream()
                 .collect(Collectors.toMap(
                         client -> client.getProviderName().toUpperCase(),
@@ -122,7 +126,8 @@ public class ProcessMessageUseCaseHandler implements ProcessMessageUseCase {
                 matchedFaqs,
                 matchedProducts,
                 cartSummary,
-                conversationHistory
+                conversationHistory,
+                session.getIdCarrito()
         );
 
         LlmClientPort llmClient = llmClients.get(activeProvider);
@@ -168,11 +173,136 @@ public class ProcessMessageUseCaseHandler implements ProcessMessageUseCase {
                 botMessage.getContenido(),
                 botMessage.getFechaMensaje(),
                 llmResponse.intent(),
-                llmResponse.confidence()
+                llmResponse.confidence(),
+                llmResponse.toolCallName(),
+                llmResponse.toolCallArgsJson()
         );
     }
 
+    @Override
+    public void handleStream(ProcessMessageCommand command, java.util.function.Consumer<com.integrador.marweld.chatbot.application.port.LlmStreamingChunk> chunkConsumer) {
+        log.info("Iniciando procesamiento de mensaje por streaming para la sesión: {}", command.sessionPublicId());
+
+        // 1. Validar y recuperar la sesión
+        SesionChatbot session = sesionChatbotRepository.findByPublicId(command.sessionPublicId())
+                .orElseThrow(() -> new SessionNotFoundException(command.sessionPublicId()));
+
+        if ("CERRADA".equalsIgnoreCase(session.getEstado())) {
+            throw new SessionClosedException(command.sessionPublicId());
+        }
+
+        // 2. Persistir el mensaje del usuario de forma inmediata
+        MensajeChatbot userMessage = MensajeChatbot.builder()
+                .sesionChatbot(session)
+                .emisor("USUARIO")
+                .contenido(command.content())
+                .fechaMensaje(LocalDateTime.now())
+                .build();
+        final MensajeChatbot savedUserMessage = mensajeChatbotRepository.save(userMessage);
+
+        // 3. RAG: Buscar FAQs y productos coincidentes
+        List<FaqChatbot> matchedFaqs = findFaqMatches(command.content());
+        List<Producto> matchedProducts = findProductMatches(command.content());
+
+        // 4. Obtener el resumen del carrito
+        String cartSummary = cartPort.getCartSummary(session.getIdCarrito());
+
+        // 5. Cargar el historial conversacional
+        List<MensajeChatbot> conversationHistory = mensajeChatbotRepository.findTop10BySesionChatbotIdSesionChatbotOrderByFechaMensajeDesc(session.getIdSesionChatbot());
+        // Invertir el orden para que quede cronológico
+        java.util.Collections.reverse(conversationHistory);
+
+        // 6. Construir prompt y delegar al LlmClient activo
+        LlmPrompt llmPrompt = new LlmPrompt(
+                command.content(),
+                session.getTipoActor(),
+                matchedFaqs,
+                matchedProducts,
+                cartSummary,
+                conversationHistory,
+                session.getIdCarrito()
+        );
+
+        LlmClientPort llmClient = llmClients.get(activeProvider);
+        if (llmClient == null) {
+            log.error("Proveedor LLM '{}' no está configurado o no existe en los componentes.", activeProvider);
+            throw new IllegalStateException("El proveedor de IA '" + activeProvider + "' no está soportado o cargado.");
+        }
+
+        StringBuilder fullTextResponse = new StringBuilder();
+        final String[] finalIntent = new String[]{"GENERAL"};
+
+        // 7. Llamar en streaming
+        llmClient.generateResponseStream(llmPrompt, chunk -> {
+            // Reenviar chunk al consumidor
+            chunkConsumer.accept(chunk);
+
+            if (chunk.text() != null && !chunk.text().isBlank()) {
+                fullTextResponse.append(chunk.text());
+            }
+
+            if (chunk.done()) {
+                if (chunk.intent() != null) {
+                    finalIntent[0] = chunk.intent();
+                }
+
+                // 8. Flujo finalizado: Persistir la respuesta del bot y telemetría
+                try {
+                    persistBotResponseAndTraceability(
+                        session,
+                        savedUserMessage,
+                        fullTextResponse.toString(),
+                        finalIntent[0],
+                        matchedProducts
+                    );
+                } catch (Exception e) {
+                    log.error("Error al persistir telemetría/respuesta del bot en streaming: {}", e.getMessage(), e);
+                }
+            }
+        });
+    }
+
+    private void persistBotResponseAndTraceability(
+            SesionChatbot session, 
+            MensajeChatbot userMessage, 
+            String responseText, 
+            String intent, 
+            List<Producto> matchedProducts) {
+        
+        MensajeChatbot botMessage = MensajeChatbot.builder()
+                .sesionChatbot(session)
+                .emisor("BOT")
+                .contenido(responseText)
+                .fechaMensaje(LocalDateTime.now())
+                .build();
+        botMessage = mensajeChatbotRepository.save(botMessage);
+
+        TelemetriaMensajeChatbot telemetria = TelemetriaMensajeChatbot.builder()
+                .mensajeChatbot(botMessage)
+                .intentDetectado(intent)
+                .confianzaIntent(new java.math.BigDecimal("0.90"))
+                .modeloUtilizado(activeProvider)
+                .tokensEntrada(0)
+                .tokensSalida(0)
+                .latenciaMs(0)
+                .build();
+        telemetriaMensajeChatbotRepository.save(telemetria);
+
+        saveMessageProductTraceability(userMessage, botMessage, matchedProducts, responseText);
+    }
+
     private List<FaqChatbot> findFaqMatches(String message) {
+        try {
+            List<Double> embedding = embeddingService.getEmbedding(message);
+            if (embedding != null && !embedding.isEmpty()) {
+                log.info("Ejecutando búsqueda semántica de FAQs con pgvector");
+                return faqChatbotRepository.findNearestFaqs(embedding.toString(), 5);
+            }
+        } catch (Exception e) {
+            log.warn("Búsqueda semántica de FAQs falló (usando fallback de palabras clave): {}", e.getMessage());
+        }
+
+        // Fallback: búsqueda por palabras clave en memoria
         List<FaqChatbot> allFaqs = faqChatbotRepository.findByEstado("ACTIVO");
         List<FaqChatbot> matchedFaqs = new ArrayList<>();
         String normalizedMsg = message.toLowerCase();

@@ -19,4 +19,12 @@ public interface LlmClientPort {
      * @return Respuesta estructurada del LLM.
      */
     LlmResponse generateResponse(LlmPrompt prompt);
+
+    /**
+     * Envía el prompt con contexto al modelo y transmite la respuesta por partes (streaming).
+     *
+     * @param prompt Objeto de prompt estructurado.
+     * @param chunkConsumer Callback que procesa cada fragmento de la respuesta conforme llega.
+     */
+    void generateResponseStream(LlmPrompt prompt, java.util.function.Consumer<LlmStreamingChunk> chunkConsumer);
 }
