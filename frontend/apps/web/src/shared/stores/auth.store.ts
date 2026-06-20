@@ -1,63 +1,56 @@
 import { create } from "zustand";
-
-export type User = {
-  name: string;
-  email: string;
-  role: string;
-};
+import { authService } from "../../features/auth/services/auth.service";
+import type { AuthFlow, AuthUser, MfaChallenge } from "../api/types";
 
 type AuthState = {
-  user: User | null;
+  accessToken: string | null;
+  user: AuthUser | null;
+  challenge: MfaChallenge | null;
   isInitialized: boolean;
-  login: (email: string) => void;
-  logout: () => void;
-  initialize: () => void;
+  setAuth: (flow: AuthFlow) => void;
+  setChallenge: (challenge: MfaChallenge | null) => void;
+  initialize: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
-function extractNameFromEmail(email: string): string {
-  const prefix = email.split("@")[0] || "Cliente";
-  return prefix
-    .split(/[._-]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 export const useAuthStore = create<AuthState>((set) => ({
+  accessToken: null,
   user: null,
+  challenge: null,
   isInitialized: false,
-
-  login: (email: string) => {
-    const name = extractNameFromEmail(email);
-    const user: User = {
-      name,
-      email,
-      role: "Cliente",
-    };
+  setAuth: (flow) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("marweld_user", JSON.stringify(user));
+      if (flow.mfaChallenge) sessionStorage.setItem("marweld_mfa_challenge", JSON.stringify(flow.mfaChallenge));
+      else sessionStorage.removeItem("marweld_mfa_challenge");
     }
-    set({ user });
+    set({ accessToken: flow.accessToken, user: flow.user, challenge: flow.mfaChallenge });
   },
-
-  logout: () => {
+  setChallenge: (challenge) => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("marweld_user");
+      if (challenge) sessionStorage.setItem("marweld_mfa_challenge", JSON.stringify(challenge));
+      else sessionStorage.removeItem("marweld_mfa_challenge");
     }
-    set({ user: null });
+    set({ challenge });
   },
-
-  initialize: () => {
-    if (typeof window !== "undefined") {
+  initialize: async () => {
+    try {
+      const flow = await authService.refresh();
+      set({ accessToken: flow.accessToken, user: flow.user, challenge: null, isInitialized: true });
+    } catch {
+      let challenge = null;
       try {
-        const saved = localStorage.getItem("marweld_user");
-        if (saved) {
-          set({ user: JSON.parse(saved), isInitialized: true });
-          return;
-        }
-      } catch (e) {
-        console.error("Error initializing auth store", e);
-      }
+        const saved = sessionStorage.getItem("marweld_mfa_challenge");
+        challenge = saved ? JSON.parse(saved) : null;
+      } catch { sessionStorage.removeItem("marweld_mfa_challenge"); }
+      set({ accessToken: null, user: null, challenge, isInitialized: true });
     }
-    set({ user: null, isInitialized: true });
+  },
+  logout: async () => {
+    try {
+      await authService.logout();
+    } finally {
+      if (typeof window !== "undefined") sessionStorage.removeItem("marweld_mfa_challenge");
+      set({ accessToken: null, user: null, challenge: null });
+    }
   },
 }));

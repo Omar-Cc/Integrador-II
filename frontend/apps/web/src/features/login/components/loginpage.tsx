@@ -1,27 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
+import { ApiError } from "../../../shared/api/client";
 import { useAuthStore } from "../../../shared/stores/auth.store";
+import { authService } from "../../auth/services/auth.service";
+import { mfaService } from "../../auth/services/mfa.service";
 
 export default function LoginPage() {
   const router = useRouter();
-  const login = useAuthStore((s) => s.login);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const user = useAuthStore((s) => s.user);
+  const challenge = useAuthStore((s) => s.challenge);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isInitialized) {
+      if (user) {
+        router.replace("/");
+      } else if (challenge && new Date(challenge.expiresAt) > new Date()) {
+        router.replace("/login/2fa");
+      }
+    }
+  }, [isInitialized, user, challenge, router]);
+
+  if (!isInitialized) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || password.length < 6) return;
+    if (!email.trim() || !password) {
+      setError("Ingresa tu correo y contrasena.");
+      return;
+    }
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    login(email);
-    setIsLoading(false);
-    router.push("/");
+    setError(null);
+    try {
+      const flow = await authService.login(email, password);
+      setAuth(flow);
+      if (flow.status === "MFA_REQUIRED") {
+        router.push("/login/2fa");
+        return;
+      }
+      try {
+        const mfaStatus = await mfaService.status();
+        const needsSetup = !mfaStatus.totpEnabled && !mfaStatus.emailOtpEnabled;
+        router.push(needsSetup ? "/cuenta/seguridad" : "/");
+      } catch {
+        router.push("/");
+      }
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.errorCode === "EMAIL_NOT_VERIFIED") {
+        router.push(`/verificar-correo?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setError(cause instanceof ApiError ? cause.message : "No se pudo iniciar sesion. Intenta nuevamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,7 +124,10 @@ export default function LoginPage() {
                 autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
                 placeholder="ejemplo@correo.com"
                 className={cn(
                   "w-full rounded-lg py-2.5 pl-9 pr-3 text-sm outline-none transition-all duration-200",
@@ -124,7 +169,10 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
                 placeholder="••••••••"
                 className={cn(
                   "w-full rounded-lg py-2.5 pl-9 pr-10 text-sm outline-none transition-all duration-200",
@@ -177,11 +225,35 @@ export default function LoginPage() {
           <div className="-mt-1 flex justify-end">
             <a
               href="#"
+              aria-disabled="true"
+              onClick={(event) => event.preventDefault()}
               className="text-primary/70 hover:text-primary text-xs font-medium transition-colors duration-200"
             >
               ¿Olvidaste tu contraseña?
             </a>
           </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="-mt-1 flex items-center gap-1.5 text-xs font-medium text-red-400"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {error}
+            </p>
+          )}
 
           {/* Botón Ingresar */}
           <button

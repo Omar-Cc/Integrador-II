@@ -4,6 +4,16 @@ export type RegistroFormData = {
   email: string;
   password: string;
   confirmPassword: string;
+  telefono: string;
+  documento: string;
+  direccion: string;
 };
 
-export type RegistroPayload = Omit<RegistroFormData, "confirmPassword">;
+export type RegistroPayload = {
+  nombre: string;
+  correo: string;
+  contrasena: string;
+  telefono?: string;
+  documento: string;
+  direccion: string;
+};

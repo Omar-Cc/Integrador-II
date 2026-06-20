@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
+import { ApiError } from "../../../shared/api/client";
 import { registrarUsuario } from "../services/registro.service";
 import type { RegistroFormData } from "../types/registro.types";
+import { useAuthStore } from "../../../shared/stores/auth.store";
 
 const initialForm: RegistroFormData = {
   nombre: "",
@@ -11,43 +14,104 @@ const initialForm: RegistroFormData = {
   email: "",
   password: "",
   confirmPassword: "",
+  telefono: "",
+  documento: "",
+  direccion: "",
 };
 
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,255}$/;
+
+function registrationErrorMessage(cause: unknown): string {
+  if (!(cause instanceof ApiError)) {
+    return "No se pudo crear la cuenta. Intenta nuevamente.";
+  }
+  const messages: Record<string, string> = {
+    EMAIL_ALREADY_EXISTS: "El correo ya se encuentra registrado.",
+    DOCUMENTO_ALREADY_EXISTS: "El documento ya se encuentra registrado.",
+    VALIDATION_ERROR: cause.message,
+    EMAIL_DELIVERY_ERROR: "La cuenta fue procesada, pero no se pudo enviar el correo de verificacion.",
+  };
+  return messages[cause.errorCode] ?? cause.message;
+}
+
 export default function RegistroPage() {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const challenge = useAuthStore((s) => s.challenge);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+
   const [form, setForm] = useState<RegistroFormData>(initialForm);
+  const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (isInitialized) {
+      if (user) {
+        router.replace("/");
+      } else if (challenge && new Date(challenge.expiresAt) > new Date()) {
+        router.replace("/login/2fa");
+      }
+    }
+  }, [isInitialized, user, challenge, router]);
+
+  if (!isInitialized) return null;
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.nombre.trim() || !form.apellido.trim() || !form.email.trim()) {
+      setError("Completa tu nombre, apellido y correo.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      setError("Ingresa un correo valido.");
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError("Las contraseñas no coinciden.");
       return;
     }
-    if (form.password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (!STRONG_PASSWORD.test(form.password)) {
+      setError(
+        "La contrasena debe tener 8 caracteres, mayuscula, minuscula, numero y simbolo.",
+      );
+      return;
+    }
+    if (step === 1) {
+      setError(null);
+      setStep(2);
+      return;
+    }
+    if (!form.documento.trim() || !form.direccion.trim()) {
+      setError("Completa el documento y la direccion.");
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      const { success } = await registrarUsuario({
-        nombre: form.nombre,
-        apellido: form.apellido,
-        email: form.email,
-        password: form.password,
+      await registrarUsuario({
+        nombre: `${form.nombre.trim()} ${form.apellido.trim()}`,
+        correo: form.email.trim(),
+        contrasena: form.password,
+        telefono: form.telefono.trim() || undefined,
+        documento: form.documento.trim(),
+        direccion: form.direccion.trim(),
       });
-      if (success) setSuccess(true);
-    } catch {
-      setError("Ocurrió un error. Intenta nuevamente.");
+      router.push(
+        `/verificar-correo?email=${encodeURIComponent(form.email.trim())}`,
+      );
+    } catch (cause) {
+      setError(registrationErrorMessage(cause));
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +198,8 @@ export default function RegistroPage() {
           className="flex w-full flex-col gap-3"
           noValidate
         >
+          {step === 1 ? (
+            <>
           {/* Nombre y Apellido en fila */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -383,6 +449,80 @@ export default function RegistroPage() {
             </div>
           </div>
 
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="telefono"
+                    className="text-xs font-semibold text-white/70"
+                  >
+                    Telefono (opcional)
+                  </label>
+                  <input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.telefono}
+                    onChange={handleChange}
+                    placeholder="999 999 999"
+                    className={cn(
+                      "w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-200",
+                      "border border-white/20 bg-white/10 text-white placeholder:text-white/25",
+                      "hover:border-primary/60 focus:border-primary focus:ring-primary/20 focus:ring-2",
+                    )}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="documento"
+                    className="text-xs font-semibold text-white/70"
+                  >
+                    Documento
+                  </label>
+                  <input
+                    id="documento"
+                    name="documento"
+                    type="text"
+                    required
+                    value={form.documento}
+                    onChange={handleChange}
+                    placeholder="DNI o RUC"
+                    className={cn(
+                      "w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-200",
+                      "border border-white/20 bg-white/10 text-white placeholder:text-white/25",
+                      "hover:border-primary/60 focus:border-primary focus:ring-primary/20 focus:ring-2",
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="direccion"
+                  className="text-xs font-semibold text-white/70"
+                >
+                  Direccion
+                </label>
+                <textarea
+                  id="direccion"
+                  name="direccion"
+                  required
+                  value={form.direccion}
+                  onChange={handleChange}
+                  placeholder="Calle, numero, distrito y ciudad"
+                  className={cn(
+                    "min-h-24 w-full resize-none rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-200",
+                    "border border-white/20 bg-white/10 text-white placeholder:text-white/25",
+                    "hover:border-primary/60 focus:border-primary focus:ring-primary/20 focus:ring-2",
+                  )}
+                />
+              </div>
+            </>
+          )}
+
           {/* Mensaje de error */}
           {error && (
             <p className="-mt-1 flex items-center gap-1.5 text-xs font-medium text-red-400">
@@ -401,6 +541,25 @@ export default function RegistroPage() {
               </svg>
               {error}
             </p>
+          )}
+
+          {step === 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep(1);
+              }}
+              disabled={isLoading}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-xl py-2.5",
+                "border border-white/15 bg-white/5 text-sm font-semibold text-white/70",
+                "hover:border-primary/40 hover:bg-white/10 hover:text-white active:scale-[0.98]",
+                "transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70",
+              )}
+            >
+              Volver
+            </button>
           )}
 
           {/* Botón Registrarse */}
@@ -452,7 +611,7 @@ export default function RegistroPage() {
                 >
                   <path d="M6.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM3.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM19.75 7.5a.75.75 0 0 1 .75.75v2.25h2.25a.75.75 0 0 1 0 1.5h-2.25v2.25a.75.75 0 0 1-1.5 0v-2.25H16.75a.75.75 0 0 1 0-1.5H19v-2.25a.75.75 0 0 1 .75-.75Z" />
                 </svg>
-                Crear cuenta
+                {step === 1 ? "Continuar" : "Crear cuenta"}
               </>
             )}
           </button>
