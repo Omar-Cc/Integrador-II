@@ -1,25 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@marweld/ui/lib/utils";
 import { useCarritoStore } from "../../features/carrito/stores/carrito.store";
 import { useAuthStore } from "../../shared/stores/auth.store";
 
 export default function Navbar() {
-  const { user, initialize, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const cartCount = useCarritoStore((s) =>
     s.items.reduce((acc, i) => acc + i.cantidad, 0),
   );
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const activeName = user ? user.nombre : "";
+  const activeRole = user ? user.rol : "";
 
-  const activeName = user ? user.name : "";
-  const activeRole = user ? user.role : "";
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
 
   const initials = activeName
     ? activeName
@@ -125,7 +128,11 @@ export default function Navbar() {
             {user ? (
               <>
                 {/* Usuario */}
-                <div className="border-white/8 hover:bg-white/8 hidden h-9 cursor-default items-center gap-2 rounded-xl border bg-white/5 pl-1 pr-3 transition-all duration-200 hover:border-white/15 sm:flex">
+                <Link
+                  href="/cuenta/seguridad"
+                  aria-label="Configurar seguridad de la cuenta"
+                  className="border-white/8 hover:bg-white/8 hidden h-9 items-center gap-2 rounded-xl border bg-white/5 pl-1 pr-3 transition-all duration-200 hover:border-white/15 sm:flex"
+                >
                   <div className="bg-primary shadow-primary/30 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm">
                     <span className="text-[11px] font-black leading-none text-black">
                       {initials}
@@ -139,12 +146,12 @@ export default function Navbar() {
                       {activeRole}
                     </p>
                   </div>
-                </div>
+                </Link>
 
                 {/* Salir */}
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={() => void handleLogout()}
                   aria-label="Cerrar sesión"
                   className="group hidden h-9 items-center gap-1.5 rounded-xl border border-transparent px-3 text-white/40 transition-all duration-200 hover:border-red-500/20 hover:bg-red-500/10 hover:text-white sm:flex"
                 >
@@ -253,10 +260,16 @@ export default function Navbar() {
                 <p className="text-sm font-semibold text-white">{activeName}</p>
                 <p className="text-xs text-white/40">{activeRole}</p>
               </div>
+              <Link
+                href="/cuenta/seguridad"
+                className="ml-auto rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all duration-200 hover:border-primary/40 hover:text-white"
+              >
+                Seguridad
+              </Link>
               <button
                 type="button"
-                onClick={logout}
-                className="ml-auto flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20"
+                onClick={() => void handleLogout()}
+                className="flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-200 hover:bg-red-500/20"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
