@@ -103,6 +103,10 @@ public class AsymmetricJwtService {
                 .compact();
     }
 
+    public long getExpirationSeconds() {
+        return expirationMs / 1000;
+    }
+
     /**
      * Parses and validates a JWT signature using the public key.
      *

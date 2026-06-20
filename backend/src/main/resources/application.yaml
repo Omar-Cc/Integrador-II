@@ -5,30 +5,33 @@ spring:
     import: optional:file:.env[.properties]
   # Default database configuration mapping to typical environment variables
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/marweld}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    url: jdbc:postgresql://${SUPABASE_HOST}:${SUPABASE_PORT}/${SUPABASE_DB}?sslmode=require
+    username: ${SUPABASE_USER}
+    password: ${SUPABASE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
   flyway:
-    enabled: ${SPRING_FLYWAY_ENABLED:false} # Safe default to avoid build failure if DB is not ready
+    enabled: ${SPRING_FLYWAY_ENABLED}
 
 app:
   notifications:
     email:
-      provider: ${APP_EMAIL_PROVIDER:RESEND}
+      provider: ${APP_EMAIL_PROVIDER}
   security:
     jwt:
       # Optional: set RSA PEM keys. If empty, the app will generate keys dynamically in memory.
       private-key: ${JWT_PRIVATE_KEY:}
       public-key: ${JWT_PUBLIC_KEY:}
-      expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 hour
-      issuer: ${JWT_ISSUER:marweld-backend}
+      expiration-ms: ${JWT_EXPIRATION_MS} # 1 hour
+      issuer: ${JWT_ISSUER}
     mfa:
       # Base64 de 32 bytes para cifrar secretos TOTP con AES-GCM.
       totp-secret-encryption-key: ${MFA_TOTP_SECRET_ENCRYPTION_KEY:}
+    refresh-token:
+      ttl-days: ${REFRESH_TOKEN_TTL_DAYS:30}
+      secure: ${REFRESH_TOKEN_COOKIE_SECURE:false}
   resend:
     api-key: ${RESEND_API_KEY}
     from-email: ${RESEND_FROM_EMAIL}

@@ -1,4 +1,6 @@
 package com.integrador.marweld.auth.application.command;
 
-public record ConfirmMfaCodeCommand(String correo, String codigo) {
+import java.util.UUID;
+
+public record ConfirmMfaCodeCommand(UUID userPublicId, String codigo) {
 }

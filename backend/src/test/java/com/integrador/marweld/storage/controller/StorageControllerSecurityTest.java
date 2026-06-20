@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
+        "spring.flyway.enabled=false",
         "app.storage.cloudflare.bucket-name=marweld-test-bucket",
         "app.storage.cloudflare.endpoint=https://mock-account-id.r2.cloudflarestorage.com",
         "app.storage.cloudflare.access-key=mock-access-key",

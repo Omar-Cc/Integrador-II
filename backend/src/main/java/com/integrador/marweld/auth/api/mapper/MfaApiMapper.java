@@ -12,16 +12,17 @@ import com.integrador.marweld.auth.application.result.MfaMethodResult;
 import com.integrador.marweld.auth.application.result.MfaStatusResult;
 import com.integrador.marweld.auth.application.result.TotpSetupResult;
 import org.springframework.stereotype.Component;
+import java.util.UUID;
 
 @Component
 public class MfaApiMapper {
 
-    public MfaAuthenticatedCommand toAuthenticatedCommand(String correo) {
-        return new MfaAuthenticatedCommand(correo);
+    public MfaAuthenticatedCommand toAuthenticatedCommand(String userPublicId) {
+        return new MfaAuthenticatedCommand(UUID.fromString(userPublicId));
     }
 
-    public ConfirmMfaCodeCommand toConfirmCommand(String correo, ConfirmMfaCodeRequest request) {
-        return new ConfirmMfaCodeCommand(correo, request.codigo());
+    public ConfirmMfaCodeCommand toConfirmCommand(String userPublicId, ConfirmMfaCodeRequest request) {
+        return new ConfirmMfaCodeCommand(UUID.fromString(userPublicId), request.codigo());
     }
 
     public MfaStatusResponse toResponse(MfaStatusResult result) {

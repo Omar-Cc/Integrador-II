@@ -27,6 +27,10 @@ public class CodigoMfaEmail {
     @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_desafio_mfa")
+    private DesafioMfa desafio;
+
     @Column(name = "codigo_hash", nullable = false)
     private String codigoHash;
 
@@ -53,6 +57,12 @@ public class CodigoMfaEmail {
         this.fechaExpiracion = fechaExpiracion;
     }
 
+    public CodigoMfaEmail(Usuario usuario, DesafioMfa desafio, String codigoHash,
+                          PropositoCodigoMfa proposito, LocalDateTime fechaExpiracion) {
+        this(usuario, codigoHash, proposito, fechaExpiracion);
+        this.desafio = desafio;
+    }
+
     public boolean estaExpirado(LocalDateTime ahora) {
         return fechaExpiracion.isBefore(ahora);
     }
@@ -71,5 +81,9 @@ public class CodigoMfaEmail {
 
     public LocalDateTime getFechaExpiracion() {
         return fechaExpiracion;
+    }
+
+    public LocalDateTime getFechaCreacion() {
+        return fechaCreacion;
     }
 }

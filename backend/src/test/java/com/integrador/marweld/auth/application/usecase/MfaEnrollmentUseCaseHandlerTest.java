@@ -89,11 +89,11 @@ class MfaEnrollmentUseCaseHandlerTest {
     @Test
     void getMfaStatusReturnsEnabledMethods() {
         Usuario usuario = activeUser();
-        when(usuarioRepository.findByCorreo("omar@example.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByPublicId(usuario.getPublicId())).thenReturn(Optional.of(usuario));
         when(metodoRepository.existsByUsuarioAndMetodoAndEstado(usuario, MetodoMfa.TOTP, EstadoMfaMetodo.ACTIVO)).thenReturn(true);
         when(metodoRepository.existsByUsuarioAndMetodoAndEstado(usuario, MetodoMfa.EMAIL_OTP, EstadoMfaMetodo.ACTIVO)).thenReturn(false);
 
-        MfaStatusResult result = handler.getMfaStatus(new MfaAuthenticatedCommand(" Omar@Example.com "));
+        MfaStatusResult result = handler.getMfaStatus(new MfaAuthenticatedCommand(usuario.getPublicId()));
 
         assertThat(result.totpEnabled()).isTrue();
         assertThat(result.emailOtpEnabled()).isFalse();
@@ -108,14 +108,14 @@ class MfaEnrollmentUseCaseHandlerTest {
                 PropositoCodigoMfa.ENROLLMENT,
                 LocalDateTime.now().plusMinutes(1)
         );
-        when(usuarioRepository.findByCorreo("omar@example.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByPublicId(usuario.getPublicId())).thenReturn(Optional.of(usuario));
         when(metodoRepository.findByUsuarioAndMetodo(usuario, MetodoMfa.EMAIL_OTP)).thenReturn(Optional.empty());
         when(metodoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(codigoMfaEmailRepository.findByUsuarioAndPropositoAndEstado(usuario, PropositoCodigoMfa.ENROLLMENT, EstadoCodigoMfa.PENDIENTE))
                 .thenReturn(List.of(previousCode));
         when(codigoMfaEmailRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        EmailMfaSetupResult result = handler.startEmailMfaSetup(new MfaAuthenticatedCommand("omar@example.com"));
+        EmailMfaSetupResult result = handler.startEmailMfaSetup(new MfaAuthenticatedCommand(usuario.getPublicId()));
 
         assertThat(result.metodo()).isEqualTo("EMAIL_OTP");
         assertThat(result.estado()).isEqualTo("PENDIENTE");
@@ -130,9 +130,9 @@ class MfaEnrollmentUseCaseHandlerTest {
     void mfaRequiresVerifiedEmail() {
         Usuario usuario = activeUser();
         usuario.setEstado(EstadoUsuario.PENDIENTE_VERIFICACION_CORREO);
-        when(usuarioRepository.findByCorreo("omar@example.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByPublicId(usuario.getPublicId())).thenReturn(Optional.of(usuario));
 
-        assertThatThrownBy(() -> handler.getMfaStatus(new MfaAuthenticatedCommand("omar@example.com")))
+        assertThatThrownBy(() -> handler.getMfaStatus(new MfaAuthenticatedCommand(usuario.getPublicId())))
                 .isInstanceOf(EmailNotVerifiedException.class);
     }
 

@@ -168,3 +168,10 @@ CREATE INDEX idx_auditoria_carrito_carrito_id ON auditoria_carrito_chatbot (id_c
 
 -- Errores asociados a mensajes
 CREATE INDEX idx_errores_chatbot_mensaje_id ON errores_chatbot (id_mensaje_chatbot);
+
+-- Sesiones y autenticacion multifactor
+CREATE INDEX idx_sesiones_usuario_usuario_estado ON sesiones_usuario (id_usuario, estado);
+CREATE INDEX idx_refresh_tokens_sesion_estado ON refresh_tokens (id_sesion_usuario, estado);
+CREATE INDEX idx_desafios_mfa_usuario_estado ON desafios_mfa (id_usuario, estado);
+CREATE INDEX idx_desafios_mfa_expiracion ON desafios_mfa (fecha_expiracion);
+CREATE INDEX idx_codigos_mfa_email_desafio_estado ON codigos_mfa_email (id_desafio_mfa, estado);

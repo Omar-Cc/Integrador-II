@@ -21,6 +21,11 @@ import com.integrador.marweld.auth.application.usecase.StartTotpSetupUseCase;
 import com.integrador.marweld.auth.application.usecase.VerifyEmailUseCase;
 import com.integrador.marweld.auth.domain.exception.DocumentoAlreadyExistsException;
 import com.integrador.marweld.auth.domain.exception.EmailAlreadyExistsException;
+import com.integrador.marweld.auth.application.command.*;
+import com.integrador.marweld.auth.application.result.AuthFlowResult;
+import com.integrador.marweld.auth.application.result.MfaEmailSentResult;
+import com.integrador.marweld.auth.application.usecase.AuthSessionUseCase;
+import com.integrador.marweld.core.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final ConfirmTotpSetupUseCase confirmTotpSetupUseCase;
     private final StartEmailMfaSetupUseCase startEmailMfaSetupUseCase;
     private final ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase;
+    private final AuthSessionUseCase authSessionUseCase;
 
     public AuthServiceImpl(
             RegisterClientUseCase registerClientUseCase,
@@ -49,7 +55,8 @@ public class AuthServiceImpl implements AuthService {
             StartTotpSetupUseCase startTotpSetupUseCase,
             ConfirmTotpSetupUseCase confirmTotpSetupUseCase,
             StartEmailMfaSetupUseCase startEmailMfaSetupUseCase,
-            ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase) {
+            ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase,
+            AuthSessionUseCase authSessionUseCase) {
         this.registerClientUseCase = registerClientUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.resendVerificationCodeUseCase = resendVerificationCodeUseCase;
@@ -58,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
         this.confirmTotpSetupUseCase = confirmTotpSetupUseCase;
         this.startEmailMfaSetupUseCase = startEmailMfaSetupUseCase;
         this.confirmEmailMfaSetupUseCase = confirmEmailMfaSetupUseCase;
+        this.authSessionUseCase = authSessionUseCase;
     }
 
     @Override
@@ -123,4 +131,28 @@ public class AuthServiceImpl implements AuthService {
     public MfaMethodResult confirmEmailMfaSetup(ConfirmMfaCodeCommand command) {
         return confirmEmailMfaSetupUseCase.confirmEmailMfaSetup(command);
     }
+
+    @Override
+    @Transactional
+    public AuthFlowResult login(LoginCommand command) { return authSessionUseCase.login(command); }
+
+    @Override
+    @Transactional
+    public MfaEmailSentResult sendLoginMfaEmail(MfaChallengeCommand command) {
+        return authSessionUseCase.sendLoginMfaEmail(command);
+    }
+
+    @Override
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public AuthFlowResult verifyLoginMfa(VerifyLoginMfaCommand command) {
+        return authSessionUseCase.verifyLoginMfa(command);
+    }
+
+    @Override
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public AuthFlowResult refresh(RefreshSessionCommand command) { return authSessionUseCase.refresh(command); }
+
+    @Override
+    @Transactional
+    public void logout(LogoutCommand command) { authSessionUseCase.logout(command); }
 }

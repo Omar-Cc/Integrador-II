@@ -1,5 +1,6 @@
 package com.integrador.marweld.auth.api.controller;
 
+import com.integrador.marweld.auth.api.AuthCookieFactory;
 import com.integrador.marweld.auth.api.mapper.AuthApiMapper;
 import com.integrador.marweld.auth.application.result.EmailVerificationResult;
 import com.integrador.marweld.auth.application.service.AuthService;
@@ -38,6 +39,9 @@ class AuthControllerEmailVerificationTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private AuthCookieFactory authCookieFactory;
 
     @Test
     void verifyEmailReturnsStandardApiResponse() throws Exception {

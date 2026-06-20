@@ -32,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({MfaApiMapper.class, GlobalExceptionHandler.class})
 class MfaControllerTest {
 
+    private static final String USER_PUBLIC_ID = "7f84c99a-1d30-4c39-8e72-ff7ab96f6c1c";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -47,7 +49,7 @@ class MfaControllerTest {
                 .thenReturn(new MfaStatusResult(true, false));
 
         mockMvc.perform(get("/api/me/2fa")
-                        .with(jwt().jwt(token -> token.subject("omar@example.com"))))
+                        .with(jwt().jwt(token -> token.subject(USER_PUBLIC_ID))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.data.totpEnabled").value(true))
@@ -61,7 +63,7 @@ class MfaControllerTest {
                 .thenReturn(new EmailMfaSetupResult("EMAIL_OTP", "PENDIENTE", expiration));
 
         mockMvc.perform(post("/api/me/2fa/email/setup")
-                        .with(jwt().jwt(token -> token.subject("omar@example.com"))))
+                        .with(jwt().jwt(token -> token.subject(USER_PUBLIC_ID))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.data.metodo").value("EMAIL_OTP"))
@@ -75,7 +77,7 @@ class MfaControllerTest {
                 .thenReturn(new MfaMethodResult("EMAIL_OTP", "ACTIVO"));
 
         mockMvc.perform(post("/api/me/2fa/email/confirm")
-                        .with(jwt().jwt(token -> token.subject("omar@example.com")))
+                        .with(jwt().jwt(token -> token.subject(USER_PUBLIC_ID)))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -93,7 +95,7 @@ class MfaControllerTest {
                 .thenThrow(new EmailNotVerifiedException());
 
         mockMvc.perform(get("/api/me/2fa")
-                        .with(jwt().jwt(token -> token.subject("pending@example.com"))))
+                        .with(jwt().jwt(token -> token.subject(USER_PUBLIC_ID))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("EMAIL_NOT_VERIFIED"));
     }

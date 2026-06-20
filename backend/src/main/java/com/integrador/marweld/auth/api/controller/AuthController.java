@@ -24,6 +24,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.integrador.marweld.auth.api.AuthCookieFactory;
+import com.integrador.marweld.auth.api.request.*;
+import com.integrador.marweld.auth.api.response.*;
+import com.integrador.marweld.auth.application.command.RefreshSessionCommand;
+import com.integrador.marweld.auth.application.command.LogoutCommand;
+import com.integrador.marweld.auth.application.result.AuthFlowResult;
+import com.integrador.marweld.auth.application.result.MfaEmailSentResult;
+import com.integrador.marweld.core.security.CloudflareIpResolver;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.CookieValue;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,10 +46,60 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthApiMapper authApiMapper;
+    private final AuthCookieFactory authCookieFactory;
 
-    public AuthController(AuthService authService, AuthApiMapper authApiMapper) {
+    public AuthController(AuthService authService, AuthApiMapper authApiMapper, AuthCookieFactory authCookieFactory) {
         this.authService = authService;
         this.authApiMapper = authApiMapper;
+        this.authCookieFactory = authCookieFactory;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthFlowResponse>> login(
+            @Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        AuthFlowResult result = authService.login(authApiMapper.toCommand(
+                request, CloudflareIpResolver.getClientIp(servletRequest), servletRequest.getHeader("User-Agent")));
+        return authResponse("Autenticacion procesada correctamente.", result);
+    }
+
+    @PostMapping("/login/mfa/email/send")
+    public ResponseEntity<ApiResponse<MfaEmailSentResponse>> sendLoginMfaEmail(
+            @Valid @RequestBody MfaChallengeRequest request) {
+        MfaEmailSentResult result = authService.sendLoginMfaEmail(authApiMapper.toCommand(request));
+        return ResponseEntity.ok(ApiResponse.success("Codigo MFA enviado correctamente.",
+                new MfaEmailSentResponse(result.expiresAt())));
+    }
+
+    @PostMapping("/login/mfa/verify")
+    public ResponseEntity<ApiResponse<AuthFlowResponse>> verifyLoginMfa(
+            @Valid @RequestBody VerifyLoginMfaRequest request, HttpServletRequest servletRequest) {
+        AuthFlowResult result = authService.verifyLoginMfa(authApiMapper.toCommand(
+                request, CloudflareIpResolver.getClientIp(servletRequest), servletRequest.getHeader("User-Agent")));
+        return authResponse("Segundo factor validado correctamente.", result);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthFlowResponse>> refresh(
+            @CookieValue(name = AuthCookieFactory.COOKIE_NAME, required = false) String refreshToken) {
+        AuthFlowResult result = authService.refresh(new RefreshSessionCommand(refreshToken));
+        return authResponse("Sesion renovada correctamente.", result);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @CookieValue(name = AuthCookieFactory.COOKIE_NAME, required = false) String refreshToken) {
+        authService.logout(new LogoutCommand(refreshToken));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieFactory.clear().toString())
+                .body(ApiResponse.success("Sesion cerrada correctamente.", null));
+    }
+
+    private ResponseEntity<ApiResponse<AuthFlowResponse>> authResponse(String message, AuthFlowResult result) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        if (result.refreshToken() != null) {
+            response.header(HttpHeaders.SET_COOKIE, authCookieFactory.create(result.refreshToken()).toString());
+        }
+        return response.body(ApiResponse.success(message, authApiMapper.toResponse(result)));
     }
 
     @PostMapping("/register")
