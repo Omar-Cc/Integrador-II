@@ -72,4 +72,20 @@ public class AuthEmailSenderAdapter implements EmailSender {
             throw new MfaEmailDeliveryException("No se pudo enviar el codigo 2FA por correo.", e);
         }
     }
+
+    @Override
+    public void sendPasswordResetEmail(String to, String name, String otp) {
+        String asunto = "Recupera tu contraseña de Marweld";
+        String contenidoHtml = String.format(
+                "<div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'>"
+                        + "<h2>Hola, %s</h2><p>Usa este código para crear una nueva contraseña:</p>"
+                        + "<div style='background:#f5f5f5;padding:15px;text-align:center;font-size:24px;font-weight:bold;letter-spacing:5px;margin:20px 0;border-radius:5px;'>%s</div>"
+                        + "<p>El código expira en 15 minutos y solo puede usarse una vez.</p>"
+                        + "<p>Si no solicitaste este cambio, ignora este correo.</p></div>", name, otp);
+        try {
+            emailService.sendEmail(to, asunto, contenidoHtml);
+        } catch (Exception exception) {
+            throw new EmailDeliveryException("No se pudo enviar el correo de recuperación.", exception);
+        }
+    }
 }

@@ -23,6 +23,8 @@ public interface AuthService {
     RegisterResult register(RegisterCommand command);
     EmailVerificationResult verifyEmail(VerifyEmailCommand command);
     EmailVerificationResult resendVerificationCode(ResendVerificationCodeCommand command);
+    void requestPasswordReset(String correo);
+    void confirmPasswordReset(String correo, String codigo, String contrasena);
     MfaStatusResult getMfaStatus(MfaAuthenticatedCommand command);
     TotpSetupResult startTotpSetup(MfaAuthenticatedCommand command);
     MfaMethodResult confirmTotpSetup(ConfirmMfaCodeCommand command);

@@ -177,4 +177,19 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<ApiResponse<Void>> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequest request) {
+        authService.requestPasswordReset(request.correo());
+        return ResponseEntity.accepted().body(ApiResponse.success(
+                "Si existe una cuenta activa con ese correo, enviamos un código de recuperación.", null));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmPasswordReset(
+            @Valid @RequestBody ConfirmPasswordResetRequest request) {
+        authService.confirmPasswordReset(request.correo(), request.codigo(), request.contrasena());
+        return ResponseEntity.ok(ApiResponse.success("Contraseña actualizada correctamente.", null));
+    }
 }

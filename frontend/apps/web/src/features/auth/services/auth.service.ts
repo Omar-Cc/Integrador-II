@@ -26,6 +26,16 @@ export const authService = {
       method: "POST",
       body: JSON.stringify({ correo }),
     }),
+  requestPasswordReset: (correo: string) =>
+    apiRequest<void>("/api/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ correo }),
+    }),
+  confirmPasswordReset: (correo: string, codigo: string, contrasena: string) =>
+    apiRequest<void>("/api/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ correo, codigo, contrasena }),
+    }),
   login: (correo: string, contrasena: string) =>
     apiRequest<AuthFlow>("/api/auth/login", {
       method: "POST",

@@ -19,6 +19,7 @@ import com.integrador.marweld.auth.application.usecase.RegisterClientUseCase;
 import com.integrador.marweld.auth.application.usecase.StartEmailMfaSetupUseCase;
 import com.integrador.marweld.auth.application.usecase.StartTotpSetupUseCase;
 import com.integrador.marweld.auth.application.usecase.VerifyEmailUseCase;
+import com.integrador.marweld.auth.application.usecase.PasswordRecoveryUseCase;
 import com.integrador.marweld.auth.domain.exception.DocumentoAlreadyExistsException;
 import com.integrador.marweld.auth.domain.exception.EmailAlreadyExistsException;
 import com.integrador.marweld.auth.application.command.*;
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final StartEmailMfaSetupUseCase startEmailMfaSetupUseCase;
     private final ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase;
     private final AuthSessionUseCase authSessionUseCase;
+    private final PasswordRecoveryUseCase passwordRecoveryUseCase;
 
     public AuthServiceImpl(
             RegisterClientUseCase registerClientUseCase,
@@ -56,7 +58,8 @@ public class AuthServiceImpl implements AuthService {
             ConfirmTotpSetupUseCase confirmTotpSetupUseCase,
             StartEmailMfaSetupUseCase startEmailMfaSetupUseCase,
             ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase,
-            AuthSessionUseCase authSessionUseCase) {
+            AuthSessionUseCase authSessionUseCase,
+            PasswordRecoveryUseCase passwordRecoveryUseCase) {
         this.registerClientUseCase = registerClientUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.resendVerificationCodeUseCase = resendVerificationCodeUseCase;
@@ -66,6 +69,7 @@ public class AuthServiceImpl implements AuthService {
         this.startEmailMfaSetupUseCase = startEmailMfaSetupUseCase;
         this.confirmEmailMfaSetupUseCase = confirmEmailMfaSetupUseCase;
         this.authSessionUseCase = authSessionUseCase;
+        this.passwordRecoveryUseCase = passwordRecoveryUseCase;
     }
 
     @Override
@@ -100,6 +104,18 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public EmailVerificationResult resendVerificationCode(ResendVerificationCodeCommand command) {
         return resendVerificationCodeUseCase.handle(command);
+    }
+
+    @Override
+    @Transactional
+    public void requestPasswordReset(String correo) {
+        passwordRecoveryUseCase.requestReset(correo);
+    }
+
+    @Override
+    @Transactional
+    public void confirmPasswordReset(String correo, String codigo, String contrasena) {
+        passwordRecoveryUseCase.confirmReset(correo, codigo, contrasena);
     }
 
     @Override

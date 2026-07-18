@@ -18,4 +18,6 @@ public interface EmailSender {
      * @param otp  codigo 2FA numerico
      */
     void sendMfaEmailOtp(String to, String name, String otp);
+
+    void sendPasswordResetEmail(String to, String name, String otp);
 }

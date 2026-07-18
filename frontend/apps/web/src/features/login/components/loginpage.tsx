@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
 import { ApiError } from "../../../shared/api/client";
@@ -221,16 +222,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Link olvidé contraseña */}
+          {/* Recuperación de contraseña */}
           <div className="-mt-1 flex justify-end">
-            <a
-              href="#"
-              aria-disabled="true"
-              onClick={(event) => event.preventDefault()}
+            <Link
+              href="/recuperar-contrasena"
               className="text-primary/70 hover:text-primary text-xs font-medium transition-colors duration-200"
             >
               ¿Olvidaste tu contraseña?
-            </a>
+            </Link>
           </div>
 
           {error && (

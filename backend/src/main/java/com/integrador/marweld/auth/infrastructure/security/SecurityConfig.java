@@ -35,6 +35,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification-code",
+                                "/api/auth/password-reset/**",
                                 "/api/auth/login",
                                 "/api/auth/login/mfa/email/send",
                                 "/api/auth/login/mfa/verify",
