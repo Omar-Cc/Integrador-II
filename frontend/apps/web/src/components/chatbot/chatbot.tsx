@@ -8,14 +8,86 @@ import { useCarritoStore } from "../../features/carrito/stores/carrito.store";
 import type { Producto } from "../../features/home/types/producto.types";
 import { useAuthStore } from "../../shared/stores/auth.store";
 import { apiRequest } from "../../shared/api/client";
+import { getProductoById } from "../../features/home/services/productos.service";
 
 type Message = {
   id: string;
   sender: "bot" | "user";
   text?: string;
   products?: Producto[];
+  cartItems?: CartMessageItem[];
   showOptionsAfterAdd?: boolean;
 };
+
+type CartSummaryItem = {
+  productPublicId?: string | null;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+};
+
+type CartMessageItem = CartSummaryItem & {
+  product?: Producto | null;
+};
+
+type ChatbotMessageResult = {
+  botMessageContent?: string;
+  intent?: string;
+  toolCallName?: string | null;
+  toolCallArgsJson?: string | Record<string, unknown> | null;
+  matchedProductPublicIds?: string[];
+  cartItems?: CartSummaryItem[];
+};
+
+function compactMessageForVisuals(text: string, hasVisuals: boolean): string {
+  if (!hasVisuals) return text;
+
+  return text
+    .split("\n")
+    .filter((line) => !/^\s*[*-]\s+\*\*/.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function MarkdownMessage({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line, lineIndex) => {
+        if (!line.trim()) return <div key={`space-${lineIndex}`} className="h-2" />;
+
+        const isBullet = /^\s*[*-]\s+/.test(line);
+        const content = line.replace(/^\s*[*-]\s+/, "");
+        const fragments = content.split("**");
+
+        return (
+          <p key={`line-${lineIndex}`} className={cn("min-h-5", isBullet && "flex gap-2")}>
+            {isBullet && <span className="text-primary mt-0.5 font-black">•</span>}
+            <span>
+              {fragments.map((fragment, fragmentIndex) =>
+                fragmentIndex % 2 === 1 ? (
+                  <strong key={`${lineIndex}-${fragmentIndex}`} className="font-extrabold text-white">
+                    {fragment}
+                  </strong>
+                ) : (
+                  fragment
+                ),
+              )}
+            </span>
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("es-PE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 const QUICK_CHIPS = [
   "Electrodos",
@@ -45,6 +117,7 @@ export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isQuickRepliesOpen, setIsQuickRepliesOpen] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
@@ -101,6 +174,12 @@ export function Chatbot() {
     }
   }, [isOpen, sessionId]);
 
+  useEffect(() => {
+    if (sessionId) {
+      void hydrateEmptyCartFromBackend(sessionId);
+    }
+  }, [sessionId]);
+
   // Scroll to bottom when messages or typing status changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -133,34 +212,55 @@ export function Chatbot() {
     }
   };
 
-  const fetchProductsFromBackend = async (query: string): Promise<Producto[]> => {
-    try {
-      const res = await fetch(`/api/v1/products?busqueda=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.data) {
-          return data.data.map((prod: any) => ({
-            id: prod.publicId,
-            nombre: prod.nombre,
-            descripcionCorta: prod.descripcionCorta || prod.descripcion || "",
-            descripcionLarga: prod.descripcionLarga || "",
-            precio: prod.precio,
-            imagen: prod.imagen || "/placeholder-product.png",
-            categoria: prod.categoria || "Soldadura",
-            marca: prod.marca || "Genérica",
-            disponible: prod.disponible ?? true,
-            stock: prod.stock ?? 10,
-            destacado: prod.destacado ?? false,
-            caracteristicas: prod.caracteristicas || [],
-            relacionados: prod.relacionados || [],
-          }));
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching products from backend", err);
-    }
-    return [];
+  const fetchMatchedProducts = async (productIds?: string[]): Promise<Producto[]> => {
+    if (!productIds?.length) return [];
+
+    const products = await Promise.all(
+      [...new Set(productIds)].slice(0, 4).map((productId) => getProductoById(productId)),
+    );
+    return products.filter((product): product is Producto => product !== null);
   };
+
+  const fetchCartItems = async (cartItems?: CartSummaryItem[]): Promise<CartMessageItem[]> => {
+    if (!cartItems?.length) return [];
+
+    return Promise.all(
+      cartItems.map(async (item) => ({
+        ...item,
+        product: item.productPublicId ? await getProductoById(item.productPublicId) : null,
+      })),
+    );
+  };
+
+  async function hydrateEmptyCartFromBackend(activeSessionId: string) {
+    // La web puede haber sido recargada; solo recuperamos el servidor cuando el
+    // carrito local aún está vacío para no sobrescribir cambios no sincronizados.
+    if (useCarritoStore.getState().items.length > 0) return;
+
+    try {
+      const serverItems = await apiRequest<CartSummaryItem[]>(
+        `/api/v1/chatbot/sessions/${activeSessionId}/cart/items`,
+      );
+      if (!serverItems?.length || useCarritoStore.getState().items.length > 0) return;
+
+      const items = await Promise.all(
+        serverItems.map(async (item) => {
+          const product = item.productPublicId ? await getProductoById(item.productPublicId) : null;
+          return {
+            id: item.productPublicId || item.nombre,
+            nombre: item.nombre,
+            imagen: product?.imagen || "/placeholder-product.png",
+            precio: item.precioUnitario,
+            stock: product?.stock ?? item.cantidad,
+            cantidad: item.cantidad,
+          };
+        }),
+      );
+      useCarritoStore.getState().establecerItems(items);
+    } catch (error) {
+      console.error("No se pudo sincronizar el carrito desde el backend", error);
+    }
+  }
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,18 +268,14 @@ export function Chatbot() {
 
     const userText = inputValue;
     setInputValue("");
-    submitMessage(userText, userText);
+    submitMessage(userText);
   };
 
   const handleChipClick = (chip: string) => {
-    let searchTerm = chip;
-    if (chip === "Cables eléctricos") {
-      searchTerm = "alambre";
-    }
-    submitMessage(chip, searchTerm);
+    submitMessage(chip);
   };
 
-  const submitMessage = async (userDisplayText: string, searchKey: string) => {
+  const submitMessage = async (userDisplayText: string) => {
     // Add user message to state
     const userMsgId = `user-${Date.now()}`;
     setMessages((prev) => [
@@ -243,16 +339,27 @@ export function Chatbot() {
       }
 
       const body = await response.json();
-      const data = body.data; // MessageProcessResult
+      const data = body.data as ChatbotMessageResult;
+      const matchedProducts = await fetchMatchedProducts(data.matchedProductPublicIds);
+      const cartItems = await fetchCartItems(data.cartItems);
+      const botText = compactMessageForVisuals(
+        data.botMessageContent || "",
+        matchedProducts.length > 0 || cartItems.length > 0,
+      );
 
       const botMsgId = `bot-${Date.now()}`;
       setMessages((prev) => [
         ...prev,
-        { id: botMsgId, sender: "bot", text: data.botMessageContent || "", products: [] },
+        {
+          id: botMsgId,
+          sender: "bot",
+          text: botText,
+          products: matchedProducts,
+          cartItems,
+        },
       ]);
       setIsTyping(false);
 
-      let hasAction = false;
       const isCartAction = data.intent === "MODIFICAR_CARRITO" && data.toolCallName;
 
       if (isCartAction) {
@@ -265,7 +372,6 @@ export function Chatbot() {
         }
 
         if (toolCallName === "add_to_cart" && args.productPublicId) {
-          hasAction = true;
           try {
             const prodRes = await fetch(`/api/v1/products/${args.productPublicId}`);
             if (prodRes.ok) {
@@ -314,31 +420,6 @@ export function Chatbot() {
         } else if (toolCallName === "remove_from_cart" && args.productPublicId) {
           const removeFn = useCarritoStore.getState().eliminar;
           removeFn(args.productPublicId);
-        }
-      }
-
-      // If no action was made, but the user is querying products, fetch relevant search cards
-      if (!hasAction) {
-        const extractedKeywords = userDisplayText
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]/g, " ")
-          .split(/\s+/)
-          .filter(kw => kw.length >= 3 && !["de", "la", "el", "un", "con", "en", "para", "por", "que", "los", "las", "hola", "busco", "quiero", "necesito", "tienen", "venden", "precio", "cuanto", "cuesta"].includes(kw));
-
-        const firstKeyword = extractedKeywords[0];
-        if (firstKeyword) {
-          const matched = await fetchProductsFromBackend(firstKeyword);
-          if (matched.length > 0) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === botMsgId
-                  ? { ...msg, products: matched }
-                  : msg
-              )
-            );
-          }
         }
       }
 
@@ -535,7 +616,7 @@ export function Chatbot() {
           </div>
 
           {/* Área de mensajes */}
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto bg-zinc-950/20 p-4">
+          <div className="chat-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto bg-zinc-950/20 p-4 pr-2">
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -554,19 +635,19 @@ export function Chatbot() {
                       : "rounded-tl-none border border-white/5 bg-zinc-900 text-white/90",
                   )}
                 >
-                  {msg.text}
+                  <MarkdownMessage text={msg.text || ""} />
                 </div>
 
                 {/* Render cards for products matches */}
                 {msg.products && msg.products.length > 0 && (
-                  <div className="mt-1 flex w-[280px] max-w-full flex-col gap-2.5">
+                  <div className="mt-1 flex w-[292px] max-w-full flex-col gap-2.5">
                     {msg.products.slice(0, 4).map((prod) => (
                       <div
                         key={prod.id}
-                        className="border-white/6 flex gap-3 rounded-xl border bg-zinc-900/60 p-2.5 text-white transition-all duration-150 hover:border-white/10"
+                        className="border-primary/15 flex gap-3 rounded-xl border bg-zinc-900/80 p-2.5 text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition-all duration-150 hover:border-primary/40"
                       >
                         {/* Image */}
-                        <div className="border-white/6 h-14 w-14 shrink-0 overflow-hidden rounded-lg border bg-zinc-800">
+                        <div className="border-white/8 h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-zinc-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={prod.imagen}
@@ -577,14 +658,17 @@ export function Chatbot() {
                         {/* Details */}
                         <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
                           <div className="flex flex-col gap-0.5">
-                            <span className="block truncate text-xs font-bold">
+                            <span className="block text-xs font-bold leading-snug">
                               {prod.nombre}
                             </span>
-                            <span className="text-[10px] text-white/45">
-                              {prod.marca}
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                              {prod.marca} · {prod.categoria}
+                            </span>
+                            <span className="mt-1 line-clamp-2 text-[11px] leading-snug text-white/55">
+                              {prod.descripcionCorta || prod.descripcionLarga}
                             </span>
                           </div>
-                          <div className="mt-1 flex items-center justify-between">
+                          <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/6 pt-2">
                             <span className="text-primary text-xs font-black">
                               S/ {prod.precio.toFixed(2)}
                             </span>
@@ -605,9 +689,9 @@ export function Chatbot() {
                           <div className="mt-2 grid grid-cols-2 gap-1.5">
                             <Link
                               href={`/producto/${prod.id}`}
-                              className="border-white/8 rounded border py-1 text-center text-[10px] font-bold text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+                              className="border-white/8 rounded border py-1.5 text-center text-[10px] font-bold text-white/70 transition-colors hover:bg-white/5 hover:text-white"
                             >
-                              Ver detalle
+                              Ver producto
                             </Link>
                             <button
                               type="button"
@@ -638,6 +722,58 @@ export function Chatbot() {
                         catálogo
                       </Link>
                     )}
+                  </div>
+                )}
+
+                {msg.cartItems && msg.cartItems.length > 0 && (
+                  <div className="border-primary/20 mt-1 w-[292px] max-w-full overflow-hidden rounded-xl border bg-zinc-900/90 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+                    <div className="flex items-center justify-between border-b border-white/7 bg-black/30 px-3 py-2">
+                      <span className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.13em] text-white/70">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="text-primary h-3.5 w-3.5" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13 5.4 5M7 13l-1.2 1.2a1 1 0 0 0 .7 1.7H17m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0Zm-10 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z" />
+                        </svg>
+                        Carrito actual
+                      </span>
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                        {msg.cartItems.reduce((total, item) => total + item.cantidad, 0)} uds.
+                      </span>
+                    </div>
+                    <div className="divide-y divide-white/6">
+                      {msg.cartItems.map((item, itemIndex) => (
+                        <div key={`${item.productPublicId || item.nombre}-${itemIndex}`} className="flex gap-2.5 p-2.5">
+                          <div className="border-white/8 h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-zinc-800">
+                            {item.product?.imagen ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.product.imagen} alt={item.nombre} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="text-primary flex h-full w-full items-center justify-center text-xs font-black">MW</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-bold leading-snug text-white">{item.nombre}</p>
+                            <p className="mt-0.5 text-[10px] text-white/45">
+                              {item.cantidad} × S/ {formatCurrency(item.precioUnitario)}
+                            </p>
+                          </div>
+                          <p className="text-primary self-center text-[11px] font-black">S/ {formatCurrency(item.subtotal)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-white/7 bg-black/25 px-3 py-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-white/55">Total</span>
+                        <span className="text-primary font-black">
+                          S/ {formatCurrency(msg.cartItems.reduce((total, item) => total + item.subtotal, 0))}
+                        </span>
+                      </div>
+                      <Link
+                        href="/carrito"
+                        onClick={() => setIsOpen(false)}
+                        className="mt-2 block rounded-lg bg-primary py-1.5 text-center text-[10px] font-black text-black transition-transform hover:brightness-95 active:scale-[0.98]"
+                      >
+                        Ver carrito y comprar
+                      </Link>
+                    </div>
                   </div>
                 )}
 
@@ -676,19 +812,60 @@ export function Chatbot() {
 
           {/* Quick chips (Opciones Rápidas) */}
           {!isAwaitingCheckoutChoice && (
-            <div className="border-white/8 flex max-h-[135px] shrink-0 flex-wrap gap-1.5 overflow-y-auto border-t bg-zinc-900 p-3">
-              {QUICK_CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => handleChipClick(chip)}
-                  disabled={isTyping}
-                  className="border-white/6 hover:border-primary/40 hover:text-primary rounded-full border bg-zinc-950 px-2.5 py-1 text-xs text-white/70 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+            <section className="border-white/8 shrink-0 border-t bg-zinc-900">
+              <button
+                type="button"
+                onClick={() => setIsQuickRepliesOpen((isOpen) => !isOpen)}
+                aria-expanded={isQuickRepliesOpen}
+                aria-controls="chatbot-quick-replies"
+                className="group flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-white/[0.025]"
+              >
+                <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-white/55 group-hover:text-white/80">
+                  <span className="bg-primary h-1.5 w-1.5 rounded-full shadow-[0_0_8px_var(--primary)]" />
+                  Mensajes rápidos
+                  <span className="rounded-full border border-white/8 bg-black/20 px-1.5 py-0.5 text-[9px] tracking-normal text-white/35">
+                    {QUICK_CHIPS.length}
+                  </span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  className={cn(
+                    "h-3.5 w-3.5 text-white/40 transition-transform duration-200",
+                    isQuickRepliesOpen ? "rotate-180" : "rotate-0",
+                  )}
+                  aria-hidden="true"
                 >
-                  {chip}
-                </button>
-              ))}
-            </div>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div
+                id="chatbot-quick-replies"
+                className={cn(
+                  "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+                  isQuickRepliesOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                )}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="chat-scrollbar flex max-h-[112px] flex-wrap gap-1.5 overflow-y-auto px-3 pb-3">
+                    {QUICK_CHIPS.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => handleChipClick(chip)}
+                        disabled={isTyping}
+                        className="border-white/6 hover:border-primary/40 hover:text-primary rounded-full border bg-zinc-950 px-2.5 py-1 text-xs text-white/70 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
 
           {/* Formulario de envío de mensajes */}

@@ -1,8 +1,6 @@
 package com.integrador.marweld.chatbot.infrastructure.adapter;
 
-import com.integrador.marweld.catalog.domain.model.Producto;
 import com.integrador.marweld.chatbot.application.port.CartPort;
-import org.springframework.jdbc.core.JdbcTemplate;
 import com.integrador.marweld.chatbot.application.port.LlmClientPort;
 import com.integrador.marweld.chatbot.application.port.LlmPrompt;
 import com.integrador.marweld.chatbot.application.port.LlmResponse;
@@ -37,15 +35,13 @@ public class GeminiLlmAdapter implements LlmClientPort {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
-    private final JdbcTemplate jdbcTemplate;
 
-    public GeminiLlmAdapter(ChatbotProperties properties, CartPort cartPort, JdbcTemplate jdbcTemplate) {
+    public GeminiLlmAdapter(ChatbotProperties properties, CartPort cartPort) {
         this.properties = properties;
         this.cartPort = cartPort;
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newBuilder().build();
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -55,7 +51,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
 
     @Override
     public LlmResponse generateResponse(LlmPrompt prompt) {
-        log.info("Ejecutando consulta síncrona a Gemini mediante buffer de streaming...");
+        log.info("Ejecutando consulta sÃ­ncrona a Gemini mediante buffer de streaming...");
         StringBuilder sb = new StringBuilder();
         List<LlmStreamingChunk> lastChunk = new ArrayList<>();
         
@@ -95,7 +91,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("Llamada a Gemini sin API Key configurada.");
             chunkConsumer.accept(new LlmStreamingChunk(
-                    "Lo siento, el servicio de Gemini no está configurado (falta API Key). Por favor, contacta al administrador.",
+                    "Lo siento, el servicio de Gemini no estÃ¡ configurado (falta API Key). Por favor, contacta al administrador.",
                     true,
                     "SYSTEM_ERROR",
                     null,
@@ -114,7 +110,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
                     model, apiKey
             );
 
-            // Construir los contenidos de la conversación
+            // Construir los contenidos de la conversaciÃ³n
             List<Map<String, Object>> contents = new ArrayList<>();
 
             // 1. Cargar historial conversacional previo
@@ -126,11 +122,11 @@ public class GeminiLlmAdapter implements LlmClientPort {
                 ));
             });
 
-            // 2. Si es una continuación por ejecución de Tool (segundo turno)
+            // 2. Si es una continuaciÃ³n por ejecuciÃ³n de Tool (segundo turno)
             if (extraMessages != null) {
                 contents.addAll(extraMessages);
             } else {
-                // Primer turno: Añadimos la consulta del usuario enriquecida con RAG
+                // Primer turno: AÃ±adimos la consulta del usuario enriquecida con RAG
                 String userQueryWithContext = buildRagedPrompt(prompt);
                 contents.add(Map.of(
                         "role", "user",
@@ -146,7 +142,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
                     "parameters", Map.of(
                         "type", "OBJECT",
                         "properties", Map.of(
-                            "productPublicId", Map.of("type", "STRING", "description", "El UUID público del producto a agregar."),
+                            "productPublicId", Map.of("type", "STRING", "description", "El UUID pÃºblico del producto a agregar."),
                             "cantidad", Map.of("type", "INTEGER", "description", "La cantidad de unidades a agregar (mayor a 0).")
                         ),
                         "required", List.of("productPublicId", "cantidad")
@@ -158,7 +154,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
                     "parameters", Map.of(
                         "type", "OBJECT",
                         "properties", Map.of(
-                            "productPublicId", Map.of("type", "STRING", "description", "El UUID público del producto a eliminar.")
+                            "productPublicId", Map.of("type", "STRING", "description", "El UUID pÃºblico del producto a eliminar.")
                         ),
                         "required", List.of("productPublicId")
                     )
@@ -166,7 +162,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
             );
             List<Map<String, Object>> tools = List.of(Map.of("functionDeclarations", functionDeclarations));
 
-            // Armar cuerpo de la petición
+            // Armar cuerpo de la peticiÃ³n
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("contents", contents);
             requestBody.put("tools", tools);
@@ -262,10 +258,10 @@ public class GeminiLlmAdapter implements LlmClientPort {
                 }
             }
 
-            // Si el modelo solicita la ejecución de una herramienta (Tool/Function)
+            // Si el modelo solicita la ejecuciÃ³n de una herramienta (Tool/Function)
             if (detectedToolName != null) {
-                log.info("Gemini solicitó la acción: {}", detectedToolName);
-                String outputMessage = "Operación realizada con éxito.";
+                log.info("Gemini solicitÃ³ la acciÃ³n: {}", detectedToolName);
+                String outputMessage = "OperaciÃ³n realizada con Ã©xito.";
                 
                 try {
                     if ("add_to_cart".equalsIgnoreCase(detectedToolName)) {
@@ -305,7 +301,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
                         ))
                 ));
 
-                // Turno 3: Respuesta del backend con el resultado de la ejecución
+                // Turno 3: Respuesta del backend con el resultado de la ejecuciÃ³n
                 nextTurns.add(Map.of(
                         "role", "tool",
                         "parts", List.of(Map.of(
@@ -316,13 +312,13 @@ public class GeminiLlmAdapter implements LlmClientPort {
                         ))
                 ));
 
-                // Volver a llamar en modo streaming para recibir la confirmación redactada por la IA
+                // Volver a llamar en modo streaming para recibir la confirmaciÃ³n redactada por la IA
                 final String finalToolName = detectedToolName;
                 final String finalToolArgs = objectMapper.writeValueAsString(detectedToolArgs);
 
                 executeStreamingCall(prompt, nextTurns, chunk -> {
                     if (chunk.done()) {
-                        // Enriquecer el chunk final indicando la acción para que el frontend sincronice Zustand
+                        // Enriquecer el chunk final indicando la acciÃ³n para que el frontend sincronice Zustand
                         chunkConsumer.accept(new LlmStreamingChunk(
                                 chunk.text(),
                                 true,
@@ -336,7 +332,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
                 });
 
             } else {
-                // Finalización exitosa sin herramientas
+                // FinalizaciÃ³n exitosa sin herramientas
                 String intent = detectIntentHeuristic(prompt.userMessage(), textResponse.toString());
                 chunkConsumer.accept(new LlmStreamingChunk(
                         "",
@@ -350,7 +346,7 @@ public class GeminiLlmAdapter implements LlmClientPort {
         } catch (Exception e) {
             log.error("Error en streaming con Gemini: {}", e.getMessage(), e);
             chunkConsumer.accept(new LlmStreamingChunk(
-                    "Lo siento, ocurrió un error procesando tu respuesta.",
+                    "Lo siento, ocurriÃ³ un error procesando tu respuesta.",
                     true,
                     "SYSTEM_ERROR",
                     null,
@@ -366,9 +362,9 @@ public class GeminiLlmAdapter implements LlmClientPort {
         sb.append("El usuario actual es un: ").append(prompt.sessionActorType()).append(".\n\n");
 
         sb.append("REGLAS ESTRICTAS DE NEGOCIO:\n");
-        sb.append("1. Responde ÚNICAMENTE basándote en la información de productos y FAQs provista en el contexto.\n");
-        sb.append("2. Si el usuario te pide comprar, añadir o quitar productos del carrito, utiliza exclusivamente las herramientas (tools) provistas para modificar el carrito.\n");
-        sb.append("3. Si el usuario te pregunta por un producto que no está en la lista de productos activos, dile amablemente que actualmente no contamos con él.\n");
+        sb.append("1. Responde ÃšNICAMENTE basÃ¡ndote en la informaciÃ³n de productos y FAQs provista en el contexto.\n");
+        sb.append("2. Si el usuario te pide comprar, aÃ±adir o quitar productos del carrito, utiliza exclusivamente las herramientas (tools) provistas para modificar el carrito.\n");
+        sb.append("3. Si el usuario te pregunta por un producto que no estÃ¡ en la lista de productos activos, dile amablemente que actualmente no contamos con Ã©l.\n");
         sb.append("4. Para sugerir o recomendar alternativas, utiliza exclusivamente la lista de productos activos provistos.\n\n");
 
         sb.append("--- RESUMEN DEL CARRITO ACTUAL DEL USUARIO ---\n");
@@ -390,16 +386,14 @@ public class GeminiLlmAdapter implements LlmClientPort {
         }
 
         if (!prompt.matchedProducts().isEmpty()) {
-            sb.append("Productos del catálogo encontrados:\n");
+            sb.append("Productos del catÃ¡logo encontrados:\n");
             prompt.matchedProducts().forEach(p -> {
-                String marca = getProductMarca(p.getIdProducto());
-                int stock = getProductStock(p.getIdProducto());
-                sb.append("- ").append(p.getNombre())
-                  .append(" (Marca: ").append(marca)
-                  .append(", Categoria: ").append(p.getCategoria().getNombreCategoria())
-                  .append("). Precio: S/. ").append(p.getPrecio())
-                  .append(", Stock: ").append(stock)
-                  .append(", UUID: ").append(p.getPublicId())
+                sb.append("- ").append(p.nombre())
+                  .append(" (Marca: ").append(valueOrDefault(p.marca(), "Generica"))
+                  .append(", Categoria: ").append(valueOrDefault(p.categoria(), "General"))
+                  .append("). Precio: S/. ").append(p.precio())
+                  .append(", Stock: ").append(p.stock())
+                  .append(", UUID: ").append(p.publicId())
                   .append("\n");
             });
             sb.append("\n");
@@ -409,30 +403,11 @@ public class GeminiLlmAdapter implements LlmClientPort {
         return sb.toString();
     }
 
-    private String getProductMarca(Integer idProducto) {
-        try {
-            return jdbcTemplate.queryForObject(
-                "SELECT valor FROM especificaciones_producto WHERE id_producto = ? AND clave = 'marca'",
-                String.class,
-                idProducto
-            );
-        } catch (Exception e) {
-            return "Genérica";
-        }
-    }
 
-    private int getProductStock(Integer idProducto) {
-        try {
-            return jdbcTemplate.queryForObject(
-                "SELECT stock_actual FROM inventarios WHERE id_producto = ?",
-                Integer.class,
-                idProducto
-            );
-        } catch (Exception e) {
-            return 0;
-        }
-    }
 
+    private String valueOrDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
+    }
     private String detectIntentHeuristic(String userQuery, String botResponse) {
         String query = userQuery.toLowerCase();
         if (query.contains("carrito") || query.contains("agregar") || query.contains("quitar") || query.contains("eliminar") || query.contains("cantidad")) {

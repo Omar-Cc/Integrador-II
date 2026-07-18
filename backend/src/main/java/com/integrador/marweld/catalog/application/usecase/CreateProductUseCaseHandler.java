@@ -9,6 +9,7 @@ import com.integrador.marweld.catalog.domain.model.Producto;
 import com.integrador.marweld.catalog.infrastructure.persistence.repository.CategoriaRepository;
 import com.integrador.marweld.catalog.infrastructure.persistence.repository.InventarioRepository;
 import com.integrador.marweld.catalog.infrastructure.persistence.repository.ProductoRepository;
+import com.integrador.marweld.catalog.infrastructure.service.ProductEmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -28,14 +29,17 @@ public class CreateProductUseCaseHandler implements CreateProductUseCase {
     private final CategoriaRepository categoriaRepository;
     private final ProductoRepository productoRepository;
     private final InventarioRepository inventarioRepository;
+    private final ProductEmbeddingService productEmbeddingService;
 
     public CreateProductUseCaseHandler(
             CategoriaRepository categoriaRepository,
             ProductoRepository productoRepository,
-            InventarioRepository inventarioRepository) {
+            InventarioRepository inventarioRepository,
+            ProductEmbeddingService productEmbeddingService) {
         this.categoriaRepository = categoriaRepository;
         this.productoRepository = productoRepository;
         this.inventarioRepository = inventarioRepository;
+        this.productEmbeddingService = productEmbeddingService;
     }
 
     @Override
@@ -73,6 +77,10 @@ public class CreateProductUseCaseHandler implements CreateProductUseCase {
 
         inventarioRepository.save(inventario);
         log.debug("Registro de inventario inicializado para el producto ID: {}", producto.getIdProducto());
+
+        // El error al vectorizar no debe impedir que se cree el producto. El
+        // proceso de arranque volverá a intentar los que queden pendientes.
+        productEmbeddingService.generateFor(producto);
 
         log.info("Producto creado de manera exitosa con publicId: {}", producto.getPublicId());
 

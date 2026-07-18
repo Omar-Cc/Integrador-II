@@ -16,5 +16,6 @@ export type CarritoState = {
   cambiarCantidad: (id: string, cantidad: number) => void;
   eliminar: (id: string) => void;
   vaciar: () => void;
+  establecerItems: (items: ItemCarrito[]) => void;
   setModalidad: (m: ModalidadEntrega) => void;
 };

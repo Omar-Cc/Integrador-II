@@ -1,10 +1,9 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { CarritoState, ModalidadEntrega } from "../types/carrito.types";
 
-// Store sin persist para evitar problemas de hidratación SSR.
-// El carrito vive en memoria durante la sesión.
-// Para persistencia real, conectar al backend con React Query.
-export const useCarritoStore = create<CarritoState>()((set, get) => ({
+// El carrito se conserva durante la sesión del visitante, igual que su sesión de chatbot.
+export const useCarritoStore = create<CarritoState>()(persist((set, get) => ({
   items: [],
   modalidad: "domicilio",
 
@@ -40,7 +39,13 @@ export const useCarritoStore = create<CarritoState>()((set, get) => ({
 
   vaciar: () => set({ items: [] }),
 
+  establecerItems: (items) => set({ items }),
+
   setModalidad: (modalidad: ModalidadEntrega) => set({ modalidad }),
+}), {
+  name: "marweld_cart",
+  storage: createJSONStorage(() => sessionStorage),
+  partialize: (state) => ({ items: state.items, modalidad: state.modalidad }),
 }));
 
 // ── Selectores derivados ──

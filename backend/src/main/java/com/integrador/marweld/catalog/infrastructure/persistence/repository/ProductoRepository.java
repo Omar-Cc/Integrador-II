@@ -37,4 +37,5 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
      * @return Lista de productos encontrados.
      */
     java.util.List<Producto> findByNombreContainingIgnoreCaseAndEstado(String nombre, String estado);
+
 }

@@ -1,7 +1,9 @@
 package com.integrador.marweld.chatbot.application.result;
 
+import com.integrador.marweld.chatbot.application.port.CartSummaryItem;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -18,7 +20,9 @@ public record MessageProcessResult(
     String intent,
     BigDecimal confidence,
     String toolCallName,
-    String toolCallArgsJson
+    String toolCallArgsJson,
+    List<UUID> matchedProductPublicIds,
+    List<CartSummaryItem> cartItems
 ) {
     public MessageProcessResult(
         UUID sessionPublicId,
@@ -32,6 +36,6 @@ public record MessageProcessResult(
         BigDecimal confidence
     ) {
         this(sessionPublicId, userMessagePublicId, userMessageContent, userMessageDate,
-             botMessagePublicId, botMessageContent, botMessageDate, intent, confidence, null, null);
+             botMessagePublicId, botMessageContent, botMessageDate, intent, confidence, null, null, List.of(), List.of());
     }
 }

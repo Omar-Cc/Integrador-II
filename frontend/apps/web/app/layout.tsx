@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "@marweld/ui/globals.css";
+import "./globals.css";
 import { AuthProvider } from "../src/shared/components/auth-provider";
 
 const geistSans = localFont({

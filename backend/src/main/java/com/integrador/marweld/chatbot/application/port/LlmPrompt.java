@@ -1,6 +1,5 @@
 package com.integrador.marweld.chatbot.application.port;
 
-import com.integrador.marweld.catalog.domain.model.Producto;
 import com.integrador.marweld.chatbot.domain.model.FaqChatbot;
 import com.integrador.marweld.chatbot.domain.model.MensajeChatbot;
 
@@ -13,7 +12,7 @@ public record LlmPrompt(
     String userMessage,
     String sessionActorType,
     List<FaqChatbot> matchedFaqs,
-    List<Producto> matchedProducts,
+    List<ProductContext> matchedProducts,
     String cartSummary,
     List<MensajeChatbot> conversationHistory,
     Integer idCarrito
