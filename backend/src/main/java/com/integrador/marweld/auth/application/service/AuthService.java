@@ -19,6 +19,7 @@ import com.integrador.marweld.auth.application.command.LogoutCommand;
 import com.integrador.marweld.auth.application.result.AuthFlowResult;
 import com.integrador.marweld.auth.application.result.MfaEmailSentResult;
 import com.integrador.marweld.auth.application.result.AccountProfileResult;
+import com.integrador.marweld.auth.application.command.UpdateAccountProfileCommand;
 
 public interface AuthService {
     RegisterResult register(RegisterCommand command);
@@ -27,6 +28,7 @@ public interface AuthService {
     void requestPasswordReset(String correo);
     void confirmPasswordReset(String correo, String codigo, String contrasena);
     AccountProfileResult getAccountProfile(String userPublicId);
+    AccountProfileResult updateAccountProfile(String userPublicId, UpdateAccountProfileCommand command);
     MfaStatusResult getMfaStatus(MfaAuthenticatedCommand command);
     TotpSetupResult startTotpSetup(MfaAuthenticatedCommand command);
     MfaMethodResult confirmTotpSetup(ConfirmMfaCodeCommand command);

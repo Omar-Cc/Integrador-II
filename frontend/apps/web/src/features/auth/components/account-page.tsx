@@ -38,6 +38,9 @@ export function AccountPage() {
   const initialized = useAuthStore((state) => state.isInitialized);
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({ nombre: "", telefono: "" });
 
   useEffect(() => {
     if (!initialized) return;
@@ -52,6 +55,29 @@ export function AccountPage() {
   const memberSince = profile?.fechaRegistro
     ? new Intl.DateTimeFormat("es-PE", { month: "long", year: "numeric" }).format(new Date(profile.fechaRegistro))
     : null;
+
+  const startEditing = () => {
+    setDraft({ nombre: profile?.nombre ?? user.nombre, telefono: profile?.telefono ?? "" });
+    setError(null);
+    setEditing(true);
+  };
+
+  const saveProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!profile) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await accountService.update({ ...draft, direccion: profile.direccion ?? "" });
+      setProfile(updated);
+      useAuthStore.setState((state) => ({ user: state.user ? { ...state.user, nombre: updated.nombre } : null }));
+      setEditing(false);
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.message : "No pudimos actualizar tus datos.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return <section className="min-h-[calc(100vh-8rem)] bg-zinc-950 px-4 py-8 text-white sm:py-12">
     <div className="mx-auto max-w-6xl">
@@ -71,6 +97,17 @@ export function AccountPage() {
         <section className={cardClass} aria-labelledby="perfil-title">
           <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-300">Perfil</p><h2 id="perfil-title" className="mt-1 text-xl font-bold">Tus datos personales</h2></div><span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">Cuenta activa</span></div>
           <dl className="mt-6 grid gap-4 sm:grid-cols-2"><div><dt className="text-xs uppercase tracking-wider text-white/35">Nombre</dt><dd className="mt-1 text-sm font-medium text-white">{profile?.nombre ?? user.nombre}</dd></div><div><dt className="text-xs uppercase tracking-wider text-white/35">Correo</dt><dd className="mt-1 break-all text-sm font-medium text-white">{profile?.correo ?? user.correo}</dd></div><div><dt className="text-xs uppercase tracking-wider text-white/35">Teléfono</dt><dd className="mt-1 text-sm font-medium text-white">{profile?.telefono || "No registrado"}</dd></div><div><dt className="text-xs uppercase tracking-wider text-white/35">Documento</dt><dd className="mt-1 text-sm font-medium text-white">{profile?.documento || "No registrado"}</dd></div></dl>
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={() => editing ? setEditing(false) : startEditing()} className="rounded-lg border border-yellow-400/40 px-3 py-2 text-xs font-bold text-yellow-300 transition hover:bg-yellow-400/10">
+              {editing ? "Cancelar" : "Editar datos"}
+            </button>
+          </div>
+          {editing && <form onSubmit={saveProfile} className="mt-5 grid gap-4 border-t border-white/10 pt-5 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-white/55">Nombre<input required maxLength={160} value={draft.nombre} onChange={(event) => setDraft((value) => ({ ...value, nombre: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400/60" /></label>
+            <label className="text-xs font-semibold text-white/55">Teléfono<input maxLength={30} value={draft.telefono} onChange={(event) => setDraft((value) => ({ ...value, telefono: event.target.value }))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400/60" /></label>
+            <p className="sm:col-span-2 text-xs text-white/40">El correo y el documento son datos de identidad y no se editan desde esta sección.</p>
+            <button disabled={saving} className="w-fit rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-black disabled:opacity-60">{saving ? "Guardando…" : "Guardar cambios"}</button>
+          </form>}
         </section>
         <section className={`${cardClass} border-yellow-400/15`} aria-labelledby="entrega-title">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-300">Entrega</p><h2 id="entrega-title" className="mt-1 text-xl font-bold">Dirección registrada</h2>

@@ -21,6 +21,7 @@ import com.integrador.marweld.auth.application.usecase.StartTotpSetupUseCase;
 import com.integrador.marweld.auth.application.usecase.VerifyEmailUseCase;
 import com.integrador.marweld.auth.application.usecase.PasswordRecoveryUseCase;
 import com.integrador.marweld.auth.application.usecase.GetAccountProfileUseCase;
+import com.integrador.marweld.auth.application.usecase.UpdateAccountProfileUseCase;
 import com.integrador.marweld.auth.application.result.AccountProfileResult;
 import com.integrador.marweld.auth.domain.exception.DocumentoAlreadyExistsException;
 import com.integrador.marweld.auth.domain.exception.EmailAlreadyExistsException;
@@ -51,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthSessionUseCase authSessionUseCase;
     private final PasswordRecoveryUseCase passwordRecoveryUseCase;
     private final GetAccountProfileUseCase getAccountProfileUseCase;
+    private final UpdateAccountProfileUseCase updateAccountProfileUseCase;
 
     public AuthServiceImpl(
             RegisterClientUseCase registerClientUseCase,
@@ -63,7 +65,8 @@ public class AuthServiceImpl implements AuthService {
             ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase,
             AuthSessionUseCase authSessionUseCase,
             PasswordRecoveryUseCase passwordRecoveryUseCase,
-            GetAccountProfileUseCase getAccountProfileUseCase) {
+            GetAccountProfileUseCase getAccountProfileUseCase,
+            UpdateAccountProfileUseCase updateAccountProfileUseCase) {
         this.registerClientUseCase = registerClientUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.resendVerificationCodeUseCase = resendVerificationCodeUseCase;
@@ -75,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
         this.authSessionUseCase = authSessionUseCase;
         this.passwordRecoveryUseCase = passwordRecoveryUseCase;
         this.getAccountProfileUseCase = getAccountProfileUseCase;
+        this.updateAccountProfileUseCase = updateAccountProfileUseCase;
     }
 
     @Override
@@ -127,6 +131,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public AccountProfileResult getAccountProfile(String userPublicId) {
         return getAccountProfileUseCase.getAccountProfile(userPublicId);
+    }
+
+    @Override
+    @Transactional
+    public AccountProfileResult updateAccountProfile(String userPublicId, UpdateAccountProfileCommand command) {
+        return updateAccountProfileUseCase.updateAccountProfile(userPublicId, command);
     }
 
     @Override

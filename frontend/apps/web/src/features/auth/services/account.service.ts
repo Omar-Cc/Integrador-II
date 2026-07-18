@@ -10,6 +10,16 @@ export type AccountProfile = {
   fechaRegistro: string;
 };
 
+export type UpdateAccountProfilePayload = {
+  nombre: string;
+  telefono: string | null;
+  direccion: string;
+};
+
 export const accountService = {
   profile: () => authenticatedRequest<AccountProfile>("/api/me"),
+  update: (payload: UpdateAccountProfilePayload) => authenticatedRequest<AccountProfile>("/api/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }),
 };
