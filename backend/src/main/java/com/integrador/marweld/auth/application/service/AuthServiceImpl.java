@@ -20,6 +20,8 @@ import com.integrador.marweld.auth.application.usecase.StartEmailMfaSetupUseCase
 import com.integrador.marweld.auth.application.usecase.StartTotpSetupUseCase;
 import com.integrador.marweld.auth.application.usecase.VerifyEmailUseCase;
 import com.integrador.marweld.auth.application.usecase.PasswordRecoveryUseCase;
+import com.integrador.marweld.auth.application.usecase.GetAccountProfileUseCase;
+import com.integrador.marweld.auth.application.result.AccountProfileResult;
 import com.integrador.marweld.auth.domain.exception.DocumentoAlreadyExistsException;
 import com.integrador.marweld.auth.domain.exception.EmailAlreadyExistsException;
 import com.integrador.marweld.auth.application.command.*;
@@ -48,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
     private final ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase;
     private final AuthSessionUseCase authSessionUseCase;
     private final PasswordRecoveryUseCase passwordRecoveryUseCase;
+    private final GetAccountProfileUseCase getAccountProfileUseCase;
 
     public AuthServiceImpl(
             RegisterClientUseCase registerClientUseCase,
@@ -59,7 +62,8 @@ public class AuthServiceImpl implements AuthService {
             StartEmailMfaSetupUseCase startEmailMfaSetupUseCase,
             ConfirmEmailMfaSetupUseCase confirmEmailMfaSetupUseCase,
             AuthSessionUseCase authSessionUseCase,
-            PasswordRecoveryUseCase passwordRecoveryUseCase) {
+            PasswordRecoveryUseCase passwordRecoveryUseCase,
+            GetAccountProfileUseCase getAccountProfileUseCase) {
         this.registerClientUseCase = registerClientUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.resendVerificationCodeUseCase = resendVerificationCodeUseCase;
@@ -70,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
         this.confirmEmailMfaSetupUseCase = confirmEmailMfaSetupUseCase;
         this.authSessionUseCase = authSessionUseCase;
         this.passwordRecoveryUseCase = passwordRecoveryUseCase;
+        this.getAccountProfileUseCase = getAccountProfileUseCase;
     }
 
     @Override
@@ -116,6 +121,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void confirmPasswordReset(String correo, String codigo, String contrasena) {
         passwordRecoveryUseCase.confirmReset(correo, codigo, contrasena);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountProfileResult getAccountProfile(String userPublicId) {
+        return getAccountProfileUseCase.getAccountProfile(userPublicId);
     }
 
     @Override
