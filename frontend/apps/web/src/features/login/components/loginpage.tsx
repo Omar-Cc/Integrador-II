@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
 import { ApiError } from "../../../shared/api/client";
 import { useAuthStore } from "../../../shared/stores/auth.store";
@@ -11,6 +11,7 @@ import { mfaService } from "../../auth/services/mfa.service";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
   const user = useAuthStore((s) => s.user);
   const challenge = useAuthStore((s) => s.challenge);
@@ -21,16 +22,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const next = searchParams.get("next");
+  const returnTo = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   useEffect(() => {
     if (isInitialized) {
       if (user) {
-        router.replace("/");
+        router.replace(returnTo);
       } else if (challenge && new Date(challenge.expiresAt) > new Date()) {
-        router.replace("/login/2fa");
+        router.replace(`/login/2fa?next=${encodeURIComponent(returnTo)}`);
       }
     }
-  }, [isInitialized, user, challenge, router]);
+  }, [isInitialized, user, challenge, returnTo, router]);
 
   if (!isInitialized) return null;
 
@@ -46,15 +49,15 @@ export default function LoginPage() {
       const flow = await authService.login(email, password);
       setAuth(flow);
       if (flow.status === "MFA_REQUIRED") {
-        router.push("/login/2fa");
+        router.push(`/login/2fa?next=${encodeURIComponent(returnTo)}`);
         return;
       }
       try {
         const mfaStatus = await mfaService.status();
         const needsSetup = !mfaStatus.totpEnabled && !mfaStatus.emailOtpEnabled;
-        router.push(needsSetup ? "/cuenta/seguridad" : "/");
+        router.push(returnTo !== "/" ? returnTo : needsSetup ? "/cuenta/seguridad" : "/");
       } catch {
-        router.push("/");
+        router.push(returnTo);
       }
     } catch (cause) {
       if (cause instanceof ApiError && cause.errorCode === "EMAIL_NOT_VERIFIED") {

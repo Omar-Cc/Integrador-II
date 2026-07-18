@@ -33,6 +33,9 @@ app:
     refresh-token:
       ttl-days: ${REFRESH_TOKEN_TTL_DAYS:30}
       secure: ${REFRESH_TOKEN_COOKIE_SECURE:false}
+  checkout:
+    payment:
+      success-probability: ${CHECKOUT_PAYMENT_SUCCESS_PROBABILITY:0.85}
   resend:
     api-key: ${RESEND_API_KEY}
     from-email: ${RESEND_FROM_EMAIL}

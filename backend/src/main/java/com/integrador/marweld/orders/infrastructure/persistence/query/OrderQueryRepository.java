@@ -66,7 +66,7 @@ public class OrderQueryRepository {
                         field(name("ep", "nombre"), String.class).as("estadoNombre"),
                         field(name("p", "total"), BigDecimal.class).as("total"),
                         field(name("p", "fecha_pedido"), LocalDateTime.class).as("fechaPedido"),
-                        field(name("c", "direccion"), String.class).as("direccionEntrega"))
+                        field(name("p", "direccion_entrega"), String.class).as("direccionEntrega"))
                 .from(pedido)
                 .join(cliente).on(field(name("p", "id_cliente")).eq(field(name("c", "id_cliente"))))
                 .join(usuario).on(field(name("c", "id_usuario")).eq(field(name("u", "id_usuario"))))

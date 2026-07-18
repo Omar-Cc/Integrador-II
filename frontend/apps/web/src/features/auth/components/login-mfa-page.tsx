@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "../../../shared/api/client";
 import type { MfaMethod } from "../../../shared/api/types";
 import { useAuthStore } from "../../../shared/stores/auth.store";
@@ -10,6 +10,7 @@ import { AuthShell, buttonClass, fieldClass, FormError } from "./auth-shell";
 
 export function LoginMfaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const challenge = useAuthStore((state) => state.challenge);
   const setAuth = useAuthStore((state) => state.setAuth);
   const user = useAuthStore((state) => state.user);
@@ -21,19 +22,21 @@ export function LoginMfaPage() {
   const [error, setError] = useState<string | null>(null);
   const [codeSent, setCodeSent] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const next = searchParams.get("next");
+  const returnTo = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   useEffect(() => {
     if (!isInitialized) return;
 
     if (user) {
-      router.replace("/");
+      router.replace(returnTo);
       return;
     }
 
     if (!challenge || new Date(challenge.expiresAt) <= new Date()) {
-      router.replace("/login");
+      router.replace(`/login?next=${encodeURIComponent(returnTo)}`);
     }
-  }, [challenge, user, isInitialized, router]);
+  }, [challenge, user, isInitialized, returnTo, router]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -73,7 +76,7 @@ export function LoginMfaPage() {
         codigo
       );
       setAuth(flow);
-      router.replace("/");
+      router.replace(returnTo);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : "No se pudo validar el código.");
     } finally {

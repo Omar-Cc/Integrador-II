@@ -2,13 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@marweld/ui/lib/utils";
 import { useCarritoStore, calcularResumen } from "../stores/carrito.store";
 import type { ItemCarrito } from "../types/carrito.types";
+import { checkoutService } from "../services/checkout.service";
+import { ApiError } from "../../../shared/api/client";
+import { useAuthStore } from "../../../shared/stores/auth.store";
 
 export default function CarritoPage() {
+  const router = useRouter();
   const { items, modalidad, cambiarCantidad, eliminar, setModalidad, vaciar } =
     useCarritoStore();
+  const user = useAuthStore((state) => state.user);
+  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
   const { subtotal } = calcularResumen(items, modalidad);
   const totalItems = items.reduce((acc, i) => acc + i.cantidad, 0);
 
@@ -25,6 +32,7 @@ export default function CarritoPage() {
 
   const [mostrarModalPago, setMostrarModalPago] = useState(false);
   const [procesandoPago, setProcesandoPago] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 
   const [orderSuccess, setOrderSuccess] = useState<{
     nroPedido: string;
@@ -109,6 +117,12 @@ export default function CarritoPage() {
   const envioGratis = subtotal >= 500;
 
   const handleProcederPago = () => {
+    if (!isAuthInitialized) return;
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent("/carrito?etapa=2")}`);
+      return;
+    }
+    setPaymentMessage(null);
     setMostrarModalPago(true);
   };
 
@@ -153,30 +167,47 @@ export default function CarritoPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handlePagarAhora = (e: React.FormEvent) => {
+  const handlePagarAhora = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validatePayment()) return;
 
     setProcesandoPago(true);
-
-    setTimeout(() => {
+    setPaymentMessage(null);
+    try {
+      const result = await checkoutService.process({
+        items: items.map((item) => ({ productoPublicId: item.id, cantidad: item.cantidad })),
+        modalidadEntrega: modalidad === "domicilio" ? "DOMICILIO" : "TIENDA",
+        nombreRecibe: deliveryForm.nombreRecibe || undefined,
+        telefono: deliveryForm.telefono || undefined,
+        direccion: deliveryForm.direccion || undefined,
+        distrito: deliveryForm.distrito || undefined,
+        referencia: deliveryForm.referencia || undefined,
+        correo: paymentForm.correo,
+      });
       setProcesandoPago(false);
+      if (!result.paymentApproved) {
+        setPaymentMessage(result.message);
+        return;
+      }
+
       setMostrarModalPago(false);
-
-      const nroPedido = `MW-${Math.floor(100000 + Math.random() * 900000)}`;
-
       setOrderSuccess({
-        nroPedido,
+        nroPedido: `MW-${result.orderPublicId.slice(0, 8).toUpperCase()}`,
         modalidad:
           modalidad === "tienda" ? "Recojo en Tienda" : "Delivery a Domicilio",
-        total: totalFinal,
+        total: result.total,
         direccion:
           modalidad === "domicilio" ? deliveryForm.direccion : undefined,
         distrito: modalidad === "domicilio" ? deliveryForm.distrito : undefined,
         correo: paymentForm.correo,
       });
       vaciar();
-    }, 2000);
+    } catch (error) {
+      setProcesandoPago(false);
+      setPaymentMessage(error instanceof ApiError && error.status === 401
+        ? "Inicia sesión para finalizar tu compra."
+        : error instanceof Error ? error.message : "No se pudo procesar el pago. Inténtalo nuevamente.");
+    }
   };
 
   // ── Pantalla de Éxito ──
@@ -805,11 +836,11 @@ export default function CarritoPage() {
                   {/* CTA Pago */}
                   <button
                     type="button"
-                    disabled={modalidad === "domicilio" && !isFormValid}
+                    disabled={!isAuthInitialized || (modalidad === "domicilio" && !isFormValid)}
                     onClick={handleProcederPago}
                     className={cn(
                       "flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold shadow-lg transition-all duration-200 active:scale-[0.98]",
-                      modalidad === "domicilio" && !isFormValid
+                      !isAuthInitialized || (modalidad === "domicilio" && !isFormValid)
                         ? "border-white/8 cursor-not-allowed border bg-white/5 text-white/20 shadow-none"
                         : "bg-primary shadow-primary/20 text-black hover:brightness-95",
                     )}
@@ -888,6 +919,11 @@ export default function CarritoPage() {
                   onSubmit={handlePagarAhora}
                   className="flex flex-col gap-4"
                 >
+                  {paymentMessage && (
+                    <p role="alert" className="rounded-xl border border-red-400/25 bg-red-400/10 px-3 py-2.5 text-xs font-semibold text-red-300">
+                      {paymentMessage}
+                    </p>
+                  )}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-white/50">
                       Nombre del titular de la tarjeta *
