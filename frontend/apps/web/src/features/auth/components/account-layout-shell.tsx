@@ -16,7 +16,7 @@ type NavigationItem = {
 
 const navigation: NavigationItem[] = [
   { href: "/cuenta", label: "Resumen", icon: <path d="M4.5 10.5 12 4l7.5 6.5v8.25a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V10.5Zm5.25 9V14.25h4.5v5.25" /> },
-  { href: "/cuenta/pedidos", label: "Pedidos", hint: "Próximamente", icon: <path d="M5.25 3.75A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H17.5V3a.75.75 0 0 0-1.5 0v.75h-8.5V3A.75.75 0 0 0 6 3v.75H5.25ZM7.5 9.5h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Zm0 4h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1 0-1.5Z" /> },
+  { href: "/mis-pedidos", label: "Pedidos", icon: <path d="M5.25 3.75A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H17.5V3a.75.75 0 0 0-1.5 0v.75h-8.5V3A.75.75 0 0 0 6 3v.75H5.25ZM7.5 9.5h9a.75.75 0 0 1 0 1.5h-9a.75.75 0 0 1 0-1.5Zm0 4h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1 0-1.5Z" /> },
   { href: "/cuenta/direcciones", label: "Direcciones", hint: "Próximamente", icon: <path fillRule="evenodd" d="M12 1.5A8.25 8.25 0 0 0 3.75 9.75c0 5.272 5.12 10.14 7.19 11.884a1.64 1.64 0 0 0 2.12 0c2.07-1.745 7.19-6.612 7.19-11.884A8.25 8.25 0 0 0 12 1.5Zm0 11.25a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" clipRule="evenodd" /> },
   { href: "/cuenta/seguridad", label: "Seguridad", icon: <path fillRule="evenodd" d="M12 1.5 4.5 5.25v5.59c0 4.74 3.21 9.15 7.5 10.66 4.29-1.51 7.5-5.92 7.5-10.66V5.25L12 1.5Zm0 5.25a2.25 2.25 0 0 0-2.25 2.25v1.5h4.5V9A2.25 2.25 0 0 0 12 6.75Z" clipRule="evenodd" /> },
 ];
