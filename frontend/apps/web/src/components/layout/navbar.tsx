@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@marweld/ui/lib/utils";
@@ -22,6 +22,13 @@ export default function Navbar() {
   const handleLogout = async () => {
     await logout();
     router.push("/login");
+  };
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = search.trim();
+    router.push(query ? `/productos?q=${encodeURIComponent(query)}` : "/productos");
+    setMenuOpen(false);
   };
 
   const initials = activeName
@@ -66,7 +73,7 @@ export default function Navbar() {
           </Link>
 
           {/* ── Buscador central ── */}
-          <div className="hidden max-w-lg flex-1 md:block">
+          <form className="hidden max-w-lg flex-1 md:block" onSubmit={handleSearch}>
             <div className="relative">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -90,7 +97,7 @@ export default function Navbar() {
                 className="bg-white/6 border-white/8 hover:bg-white/8 focus:border-primary/50 focus:ring-primary/15 w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 hover:border-white/15 focus:bg-white/10 focus:ring-2"
               />
             </div>
-          </div>
+          </form>
 
           {/* ── Acciones derechas ── */}
           <div className="ml-auto flex items-center gap-2">
@@ -224,7 +231,7 @@ export default function Navbar() {
       >
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4">
           {/* Buscador móvil */}
-          <div className="relative">
+          <form className="relative" onSubmit={handleSearch}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
@@ -246,7 +253,7 @@ export default function Navbar() {
               aria-label="Buscar productos"
               className="bg-white/6 border-white/8 focus:border-primary/50 focus:ring-primary/15 w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 focus:ring-2"
             />
-          </div>
+          </form>
 
           {/* Info usuario */}
           {user ? (
