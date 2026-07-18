@@ -50,6 +50,18 @@ class AuthControllerSessionTest {
         assertThat(response.getHeaders().getFirst("Set-Cookie")).isNull();
     }
 
+    @Test
+    void refreshWithoutCookieRepresentsAnAnonymousVisitor() {
+        AuthService service = mock(AuthService.class);
+        AuthController controller = new AuthController(service, mock(AuthApiMapper.class),
+                new AuthCookieFactory(false, 30));
+
+        var response = controller.refresh(null);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+        verifyNoInteractions(service);
+    }
+
     private static MockHttpServletRequest request() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("127.0.0.1");

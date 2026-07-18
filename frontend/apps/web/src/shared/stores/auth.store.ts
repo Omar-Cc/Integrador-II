@@ -35,7 +35,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     try {
       const flow = await authService.refresh();
-      set({ accessToken: flow.accessToken, user: flow.user, challenge: null, isInitialized: true });
+      if (flow) {
+        set({ accessToken: flow.accessToken, user: flow.user, challenge: null, isInitialized: true });
+        return;
+      }
+      set({ accessToken: null, user: null, challenge: null, isInitialized: true });
     } catch {
       let challenge = null;
       try {

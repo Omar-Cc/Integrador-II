@@ -8,6 +8,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = authService.refresh()
       .then((flow) => {
+        if (!flow) return null;
         useAuthStore.getState().setAuth(flow);
         return flow.accessToken;
       })

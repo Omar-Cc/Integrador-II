@@ -81,6 +81,11 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthFlowResponse>> refresh(
             @CookieValue(name = AuthCookieFactory.COOKIE_NAME, required = false) String refreshToken) {
+        // A visitor who has not logged in yet has no refresh cookie. This is an
+        // expected anonymous state, not an invalid or expired session.
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.noContent().build();
+        }
         AuthFlowResult result = authService.refresh(new RefreshSessionCommand(refreshToken));
         return authResponse("Sesion renovada correctamente.", result);
     }

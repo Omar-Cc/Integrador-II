@@ -51,6 +51,7 @@ export const authService = {
       method: "POST",
       body: JSON.stringify({ challengePublicId, method, codigo }),
     }),
-  refresh: () => apiRequest<AuthFlow>("/api/auth/refresh", { method: "POST" }),
+  refresh: async (): Promise<AuthFlow | null> =>
+    (await apiRequest<AuthFlow>("/api/auth/refresh", { method: "POST" })) ?? null,
   logout: () => apiRequest<void>("/api/auth/logout", { method: "POST" }),
 };
