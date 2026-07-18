@@ -29,6 +29,7 @@ type CartSummaryItem = {
 
 type CartMessageItem = CartSummaryItem & {
   product?: Producto | null;
+  imagen?: string;
 };
 
 type ChatbotMessageResult = {
@@ -495,6 +496,17 @@ export function Chatbot() {
     setMessages(newMessages);
     setIsTyping(true);
 
+    // El producto recién añadido ya está en el carrito local. Usamos ese estado
+    // para mostrar el resumen de inmediato, sin requerir otra consulta al API.
+    const cartItems: CartMessageItem[] = useCarritoStore.getState().items.map((item) => ({
+      productPublicId: item.id,
+      nombre: item.nombre,
+      cantidad: item.cantidad,
+      precioUnitario: item.precio,
+      subtotal: item.precio * item.cantidad,
+      imagen: item.imagen,
+    }));
+
     setTimeout(() => {
       setIsTyping(false);
       setMessages((prev) => [
@@ -502,7 +514,10 @@ export function Chatbot() {
         {
           id: `bot-more-${Date.now()}`,
           sender: "bot",
-          text: "¡Excelente! Puedes seguir buscando escribiendo tu consulta o usando las opciones rápidas.",
+          cartItems,
+          text: cartItems.length > 0
+            ? "¡Excelente! Puedes seguir buscando escribiendo tu consulta o usando las opciones rápidas. Este es el resumen actual de tu carrito:"
+            : "¡Excelente! Puedes seguir buscando escribiendo tu consulta o usando las opciones rápidas.",
         },
       ]);
     }, 400);
@@ -742,9 +757,9 @@ export function Chatbot() {
                       {msg.cartItems.map((item, itemIndex) => (
                         <div key={`${item.productPublicId || item.nombre}-${itemIndex}`} className="flex gap-2.5 p-2.5">
                           <div className="border-white/8 h-12 w-12 shrink-0 overflow-hidden rounded-lg border bg-zinc-800">
-                            {item.product?.imagen ? (
+                            {item.product?.imagen || item.imagen ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={item.product.imagen} alt={item.nombre} className="h-full w-full object-cover" />
+                              <img src={item.product?.imagen || item.imagen} alt={item.nombre} className="h-full w-full object-cover" />
                             ) : (
                               <div className="text-primary flex h-full w-full items-center justify-center text-xs font-black">MW</div>
                             )}
