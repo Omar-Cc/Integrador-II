@@ -136,8 +136,8 @@ export default function Navbar() {
               <>
                 {/* Usuario */}
                 <Link
-                  href="/cuenta/seguridad"
-                  aria-label="Configurar seguridad de la cuenta"
+                  href="/cuenta"
+                  aria-label="Abrir mi cuenta"
                   className="border-white/8 hover:bg-white/8 hidden h-9 items-center gap-2 rounded-xl border bg-white/5 pl-1 pr-3 transition-all duration-200 hover:border-white/15 sm:flex"
                 >
                   <div className="bg-primary shadow-primary/30 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm">
@@ -268,7 +268,7 @@ export default function Navbar() {
                 <p className="text-xs text-white/40">{activeRole}</p>
               </div>
               <Link
-                href="/cuenta/seguridad"
+                href="/cuenta"
                 className="ml-auto rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-all duration-200 hover:border-primary/40 hover:text-white"
               >
                 Seguridad

@@ -35,7 +35,7 @@ export function AccountSecurityPage() {
     try { await action(); done(); setStatus(await mfaService.status()); }
     catch (cause) { setError(cause instanceof ApiError ? cause.message : "No se pudo completar la operacion."); }
   }
-  return <main className="min-h-screen bg-zinc-950 px-4 py-12 text-white">
+  return <section className="min-h-[calc(100vh-8rem)] bg-zinc-950 px-4 py-12 text-white">
     <div className="mx-auto max-w-3xl">
       <button onClick={() => router.back()} className="mb-6 text-sm text-yellow-400">Volver</button>
       <h1 className="text-2xl font-bold">Seguridad de la cuenta</h1>
@@ -61,5 +61,5 @@ export function AccountSecurityPage() {
         {emailPending && <form onSubmit={(e) => { e.preventDefault(); void run(() => mfaService.confirmEmail(emailCode), () => setEmailPending(false)); }} className="mt-4 max-w-sm space-y-3"><input className={fieldClass} inputMode="numeric" pattern="[0-9]{6}" required value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))} /><button className={buttonClass}>Confirmar correo</button></form>}
       </section>
     </div>
-  </main>;
+  </section>;
 }
