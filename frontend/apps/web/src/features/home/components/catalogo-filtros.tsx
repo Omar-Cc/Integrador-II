@@ -24,6 +24,7 @@ type CatalogoFiltrosProps = {
 };
 
 function parsePrice(value: string | null, fallback: number) {
+  if (value === null || value.trim() === "") return fallback;
   const price = Number(value);
   return Number.isFinite(price) && price >= 0 ? Math.min(price, PRICE_LIMIT) : fallback;
 }
@@ -47,6 +48,8 @@ export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltros
   );
   const [precioMin, setPrecioMin] = useState(() => parsePrice(searchParams.get("precioMin"), 0));
   const [precioMax, setPrecioMax] = useState(() => parsePrice(searchParams.get("precioMax"), PRICE_LIMIT));
+  const [precioMinInput, setPrecioMinInput] = useState(() => String(parsePrice(searchParams.get("precioMin"), 0)));
+  const [precioMaxInput, setPrecioMaxInput] = useState(() => String(parsePrice(searchParams.get("precioMax"), PRICE_LIMIT)));
   const [orden, setOrden] = useState<Orden>(
     () => (searchParams.get("orden") as Orden) || "relevancia",
   );
@@ -64,6 +67,8 @@ export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltros
     setSoloDisponibles(nextDisponibles);
     setPrecioMin(Math.min(nextMin, nextMax));
     setPrecioMax(Math.max(nextMin, nextMax));
+    setPrecioMinInput(String(Math.min(nextMin, nextMax)));
+    setPrecioMaxInput(String(Math.max(nextMin, nextMax)));
     setOrden(nextOrden && ["relevancia", "precio-asc", "precio-desc", "nombre"].includes(nextOrden)
       ? nextOrden
       : "relevancia");
@@ -121,7 +126,21 @@ export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltros
     setSoloDisponibles(false);
     setPrecioMin(0);
     setPrecioMax(PRICE_LIMIT);
+    setPrecioMinInput("0");
+    setPrecioMaxInput(String(PRICE_LIMIT));
     setOrden("relevancia");
+  };
+
+  const aplicarPrecioMin = () => {
+    const nextMin = Math.min(parsePrice(precioMinInput, 0), precioMax);
+    setPrecioMin(nextMin);
+    setPrecioMinInput(String(nextMin));
+  };
+
+  const aplicarPrecioMax = () => {
+    const nextMax = Math.max(parsePrice(precioMaxInput, PRICE_LIMIT), precioMin);
+    setPrecioMax(nextMax);
+    setPrecioMaxInput(String(nextMax));
   };
 
   return (
@@ -202,8 +221,12 @@ export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltros
               setSoloDisponibles={setSoloDisponibles}
               precioMin={precioMin}
               precioMax={precioMax}
-              setPrecioMin={setPrecioMin}
-              setPrecioMax={setPrecioMax}
+              precioMinInput={precioMinInput}
+              precioMaxInput={precioMaxInput}
+              setPrecioMinInput={setPrecioMinInput}
+              setPrecioMaxInput={setPrecioMaxInput}
+              aplicarPrecioMin={aplicarPrecioMin}
+              aplicarPrecioMax={aplicarPrecioMax}
             />
           </div>
         </aside>
@@ -251,8 +274,12 @@ export function CatalogoFiltros({ productos: initialProductos }: CatalogoFiltros
                 setSoloDisponibles={setSoloDisponibles}
                 precioMin={precioMin}
                 precioMax={precioMax}
-                setPrecioMin={setPrecioMin}
-                setPrecioMax={setPrecioMax}
+                precioMinInput={precioMinInput}
+                precioMaxInput={precioMaxInput}
+                setPrecioMinInput={setPrecioMinInput}
+                setPrecioMaxInput={setPrecioMaxInput}
+                aplicarPrecioMin={aplicarPrecioMin}
+                aplicarPrecioMax={aplicarPrecioMax}
               />
             </div>
           )}
@@ -279,11 +306,15 @@ type FiltrosContenidoProps = {
   setSoloDisponibles: (value: boolean) => void;
   precioMin: number;
   precioMax: number;
-  setPrecioMin: (value: number) => void;
-  setPrecioMax: (value: number) => void;
+  precioMinInput: string;
+  precioMaxInput: string;
+  setPrecioMinInput: (value: string) => void;
+  setPrecioMaxInput: (value: string) => void;
+  aplicarPrecioMin: () => void;
+  aplicarPrecioMax: () => void;
 };
 
-function FiltrosContenido({ categoria, setCategoria, soloDisponibles, setSoloDisponibles, precioMin, precioMax, setPrecioMin, setPrecioMax }: FiltrosContenidoProps) {
+function FiltrosContenido({ categoria, setCategoria, soloDisponibles, setSoloDisponibles, precioMin, precioMax, precioMinInput, precioMaxInput, setPrecioMinInput, setPrecioMaxInput, aplicarPrecioMin, aplicarPrecioMax }: FiltrosContenidoProps) {
   return (
     <div className="mt-6 space-y-6">
       <fieldset>
@@ -314,10 +345,10 @@ function FiltrosContenido({ categoria, setCategoria, soloDisponibles, setSoloDis
         <legend className="mb-3 text-[11px] font-black uppercase tracking-[0.16em] text-white/45">Rango de precio</legend>
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[10px] font-bold uppercase tracking-wide text-white/40">Desde
-            <input type="number" min="0" max={precioMax} inputMode="decimal" value={precioMin} onChange={(event) => setPrecioMin(Math.min(Number(event.target.value) || 0, precioMax))} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-primary/60" />
+            <input type="number" min="0" max={precioMax} inputMode="decimal" value={precioMinInput} onChange={(event) => setPrecioMinInput(event.target.value)} onBlur={aplicarPrecioMin} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-primary/60" />
           </label>
           <label className="text-[10px] font-bold uppercase tracking-wide text-white/40">Hasta
-            <input type="number" min={precioMin} max={PRICE_LIMIT} inputMode="decimal" value={precioMax} onChange={(event) => setPrecioMax(Math.max(Number(event.target.value) || 0, precioMin))} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-primary/60" />
+            <input type="number" min={precioMin} max={PRICE_LIMIT} inputMode="decimal" value={precioMaxInput} onChange={(event) => setPrecioMaxInput(event.target.value)} onBlur={aplicarPrecioMax} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black px-2.5 py-2 text-xs font-bold text-white outline-none focus:border-primary/60" />
           </label>
         </div>
         <p className="mt-3 text-xs text-white/45">S/ {precioMin.toLocaleString("es-PE")} — S/ {precioMax.toLocaleString("es-PE")}</p>
