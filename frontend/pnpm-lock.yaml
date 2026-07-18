@@ -135,6 +135,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.0(react@19.2.0)
+      zustand:
+        specifier: ^4.5.5
+        version: 4.5.5(@types/react@19.2.2)(react@19.2.0)
     devDependencies:
       '@marweld/config':
         specifier: workspace:*

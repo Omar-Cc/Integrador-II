@@ -360,10 +360,10 @@ export function Chatbot() {
       ]);
       setIsTyping(false);
 
-      const isCartAction = data.intent === "MODIFICAR_CARRITO" && data.toolCallName;
+      const toolCallName = data.toolCallName?.toLowerCase();
+      const isCartAction = data.intent === "MODIFICAR_CARRITO" && Boolean(toolCallName);
 
-      if (isCartAction) {
-        const toolCallName = data.toolCallName.toLowerCase();
+      if (isCartAction && toolCallName) {
         let args: any = {};
         try {
           args = typeof data.toolCallArgsJson === "string" ? JSON.parse(data.toolCallArgsJson) : data.toolCallArgsJson;
